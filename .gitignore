@@ -1,0 +1,10 @@
+# Webflow-выгрузка не нужна в репо — она огромная и пересоздаётся в Webflow
+need-vision-v2.webflow/
+
+# Локальные служебные файлы
+.DS_Store
+all-code.html
+patches/
+
+# Памятки/заметки, если будут
+*.local.md
