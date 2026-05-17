@@ -1,0 +1,22 @@
+# Файлы, которые НЕ нужно публиковать на Cloudflare edge-network.
+# Действует только при `wrangler deploy` (не влияет на git).
+
+# Конфиги и метаданные репо
+wrangler.jsonc
+.assetsignore
+.gitignore
+README.md
+
+# Исходник Webflow Custom Code (исторический дамп, не для прода)
+script.html
+
+# Скриншоты для дебага
+*.png
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Локальные служебные папки
+.remember/

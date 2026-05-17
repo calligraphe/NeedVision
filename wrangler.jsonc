@@ -1,0 +1,19 @@
+// Конфиг для Cloudflare Workers + Static Assets.
+// Говорит wrangler'у: «деплой всё из корня репо как статические файлы».
+//
+// После git push Cloudflare:
+//   1. Получает webhook от GitHub
+//   2. Скачивает свежий снимок репо
+//   3. Запускает `npx wrangler deploy` с этим конфигом
+//   4. Заливает все файлы (кроме исключений из .assetsignore) на edge-network
+//   5. Старый кеш инвалидируется автоматически
+//
+// Доступ: https://needvision.<account-subdomain>.workers.dev/navigation/...
+// (точный URL виден в Cloudflare dashboard → твой проект → Visit Site)
+{
+  "name": "needvision",
+  "compatibility_date": "2026-05-17",
+  "assets": {
+    "directory": "./"
+  }
+}
