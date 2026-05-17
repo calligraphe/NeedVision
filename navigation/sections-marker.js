@@ -30,13 +30,38 @@
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/sections-marker.js"></script>
  */
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ---- Проверка зависимостей ----
-  if (typeof gsap === "undefined" || typeof ScrollTrigger === "undefined") {
-    console.warn("[Need Vision] sections-marker.js: GSAP / ScrollTrigger не загружен");
-    return;
-  }
+// ---- Универсальный запуск ----
+// Если DOMContentLoaded ещё впереди — ждём его.
+// Если уже отстрелял (скрипт подгрузили позже) — запускаемся сразу.
+// Если на момент запуска GSAP ещё не загружен — ждём до GSAP_WAIT_TIMEOUT_MS
+// с проверкой через requestAnimationFrame (страховка от race condition
+// при параллельной загрузке скриптов с CDN).
+const GSAP_WAIT_TIMEOUT_MS = 3000;
 
+function bootSectionsMarker() {
+  const startedAt = performance.now();
+
+  function waitForGsap() {
+    if (typeof gsap !== "undefined" && typeof ScrollTrigger !== "undefined") {
+      runSectionsMarker();
+      return;
+    }
+    if (performance.now() - startedAt > GSAP_WAIT_TIMEOUT_MS) {
+      console.warn("[Need Vision] sections-marker.js: GSAP / ScrollTrigger не загружены за " + GSAP_WAIT_TIMEOUT_MS + "мс");
+      return;
+    }
+    requestAnimationFrame(waitForGsap);
+  }
+  waitForGsap();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootSectionsMarker);
+} else {
+  bootSectionsMarker();
+}
+
+function runSectionsMarker() {
   // ---- Тайминги ----
   const FADE_DURATION_IN = 0.4;
   const FADE_DURATION_OUT = 0.25;
@@ -127,4 +152,4 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("load", () => {
     ScrollTrigger.refresh();
   });
-});
+}
