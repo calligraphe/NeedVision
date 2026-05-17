@@ -6,13 +6,19 @@
  *             (например, `400 800 400`) и каждые 15–20 секунд
  *             прибавляет +15 — даёт ощущение «живых» поступлений.
  *
- *             Скрипт находит ВСЕ совпадения сразу — счётчик в навигации
- *             (`.amount-counter`) и счётчик в раскрывающемся меню
- *             (`.menu_amount-counter`). У каждого свой Odometer-экземпляр
- *             и свой таймер — поэтому числа на двух счётчиках будут
- *             близкими, но не точно синхронными. Это нормально, потому
- *             что одновременно их обычно не видно (меню открывается
- *             поверх навигации).
+ *             Скрипт находит ВСЕ совпадения сразу:
+ *               - `.amount-counter`        — счётчик в навигации
+ *               - `.menu_amount-counter`   — счётчик в раскрывающемся меню
+ *
+ *             У каждого свой Odometer-экземпляр и свой таймер —
+ *             числа на двух счётчиках будут близкими, но не точно
+ *             синхронными (одновременно их обычно не видно).
+ *
+ *             Если элемент скрыт на момент DOMContentLoaded (например,
+ *             меню свёрнуто), Odometer не инициализируется сразу.
+ *             Через `ResizeObserver` ждём, когда элемент получит
+ *             ширину, и только потом запускаем — иначе Odometer
+ *             может неправильно посчитать макет.
  *
  * Зависимости:
  *   - Odometer.js 0.4.7
@@ -36,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---- Проверка наличия элементов ----
   const counterElements = document.querySelectorAll('.amount-counter, .menu_amount-counter');
+  console.log(`[Need Vision] amount-counter.js: найдено счётчиков — ${counterElements.length}`);
   if (counterElements.length === 0) return;
 
   // ---- Тайминги и константы ----
@@ -60,8 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
   `;
   document.head.appendChild(style);
 
-  // ---- Запускаем Odometer на каждом найденном элементе ----
-  counterElements.forEach(counterElement => {
+  // ---- Инициализация Odometer на одном элементе ----
+  function initCounter(counterElement) {
     let currentAmount = START_AMOUNT;
 
     const od = new Odometer({
@@ -81,5 +88,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const initialInterval = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
     setTimeout(updateCounter, initialInterval);
+  }
+
+  // ---- Запускаем счётчик на каждом элементе (с отложкой, если скрыт) ----
+  counterElements.forEach(counterElement => {
+    if (counterElement.offsetWidth > 0) {
+      initCounter(counterElement);
+      return;
+    }
+
+    // Элемент пока невидим (свёрнутое меню) — ждём, когда получит ширину
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(entries => {
+        if (entries[0].contentRect.width > 0) {
+          ro.disconnect();
+          initCounter(counterElement);
+        }
+      });
+      ro.observe(counterElement);
+    } else {
+      // Старые браузеры — стартуем как есть
+      initCounter(counterElement);
+    }
   });
 });

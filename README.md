@@ -71,7 +71,7 @@
 |------|------------|--------------------|-------------|
 | [`navigation/nav-scroll.js`](navigation/nav-scroll.js) | Сжатие нав-бара в плашку при скролле, PROFIT-счётчик, инверсия над `.stages`, клик-меню | `.container__1440px`, `.nav-menu`, `.menu_overlay-content`, `.nav-profit`, `.nav-btm`, `.stages` | GSAP, ScrollTrigger |
 | [`navigation/nav-cta-invert.js`](navigation/nav-cta-invert.js) | Темизация плавающей CTA-кнопки (оранжевые секции / `.stages` / футер) | `.nav-cta__btn`, `.is-orange-nav`, `.stages`, `.footer` | GSAP, ScrollTrigger |
-| [`widgets/marquee.js`](widgets/marquee.js) | Бесшовные бегущие строки (петля на -50%) — на всех найденных маркизах | `.marquee-wrapper`, `.menu_marquee-wrapper` | GSAP |
+| [`widgets/marquee.js`](widgets/marquee.js) | Бесшовные бегущие строки (петля на -50%). Два паттерна: одиночная `.marquee-wrapper` (дублирует HTML) и контейнер `.nav_marquee-btn` с двумя готовыми `menu_marquee-wrapper` (анимирует родителя) | `.marquee-wrapper`, `.nav_marquee-btn` | GSAP |
 | [`widgets/amount-counter.js`](widgets/amount-counter.js) | Барабан-счётчики суммы, +15 каждые 15–20 сек — независимые экземпляры на каждом матче | `.amount-counter`, `.menu_amount-counter` | Odometer 0.4.7 |
 | [`widgets/timer-place-clock.js`](widgets/timer-place-clock.js) | Гео-город (по IP через `ipwho.is`) + локальные часы (12h) | `.timer-place`, `.timer-time` | — |
 | [`hero/hero-image-reveal.js`](hero/hero-image-reveal.js) | Раскрытие hero-картинки от полоски до `45vw` при скролле | `.hero-image`, `.hero__img` | GSAP, ScrollTrigger |
