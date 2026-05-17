@@ -39,6 +39,7 @@
 <!-- ===== Скрипты Need Vision ===== -->
 <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/nav-scroll.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/nav-cta-invert.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/sections-marker.js"></script>
 
 <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/widgets/marquee.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/widgets/amount-counter.js"></script>
@@ -71,6 +72,7 @@
 |------|------------|--------------------|-------------|
 | [`navigation/nav-scroll.js`](navigation/nav-scroll.js) | Сжатие нав-бара в плашку при скролле, PROFIT-счётчик, инверсия над `.stages`, клик-меню | `.container__1440px`, `.nav-menu`, `.menu_overlay-content`, `.nav-profit`, `.nav-btm`, `.stages` | GSAP, ScrollTrigger |
 | [`navigation/nav-cta-invert.js`](navigation/nav-cta-invert.js) | Темизация плавающей CTA-кнопки (оранжевые секции / `.stages` / футер) | `.nav-cta__btn`, `.is-orange-nav`, `.stages`, `.footer` | GSAP, ScrollTrigger |
+| [`navigation/sections-marker.js`](navigation/sections-marker.js) | Маркер текущей секции — фейдит opacity 0↔1 по `section-is="<class>"` | `[section-is]`, `.section-marker-wrap` | GSAP, ScrollTrigger |
 | [`widgets/marquee.js`](widgets/marquee.js) | Бесшовные бегущие строки — дублирует HTML внутри обёртки и крутит её на -50%. Работает на каждой найденной маркизе. Для скрытых элементов (свёрнутое меню) анимация откладывается через ResizeObserver | `.marquee-wrapper`, `.menu_marquee-wrapper` | GSAP |
 | [`widgets/amount-counter.js`](widgets/amount-counter.js) | Барабан-счётчики суммы, +15 каждые 15–20 сек — независимые экземпляры на каждом матче | `.amount-counter`, `.menu_amount-counter` | Odometer 0.4.7 |
 | [`widgets/timer-place-clock.js`](widgets/timer-place-clock.js) | Гео-город (по IP через `ipwho.is`) + локальные часы (12h) | `.timer-place`, `.timer-time` | — |
@@ -178,7 +180,8 @@ git push
 │
 ├── navigation/
 │   ├── nav-scroll.js
-│   └── nav-cta-invert.js
+│   ├── nav-cta-invert.js
+│   └── sections-marker.js
 │
 ├── widgets/
 │   ├── marquee.js
