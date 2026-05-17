@@ -29,3 +29,6 @@
 
 /sliders/*
   Content-Type: text/javascript; charset=utf-8
+
+/webflow/*
+  Content-Type: text/plain; charset=utf-8
