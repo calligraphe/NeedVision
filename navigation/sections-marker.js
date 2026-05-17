@@ -2,27 +2,29 @@
  * NEED.VISION — Маркеры текущей секции в навигации
  * ================================================
  *
- * Что делает: фейдит opacity у 4 маркеров в навигации в зависимости от
- *             того, какая секция сейчас занимает верх вьюпорта.
- *             Сопоставление маркер ↔ секция жёстко зашито по порядку:
+ * Что делает: фейдит opacity у маркеров навигации в зависимости от того,
+ *             какая секция сейчас занимает верх вьюпорта.
  *
- *               маркер 1 → секция `.manifesto`
- *               маркер 2 → секция `.section-logo`
- *               маркер 3 → секция `.section-cases`
- *               маркер 4 → секция `.stages`
+ *             Привязка маркер ↔ секция берётся ИЗ ЗНАЧЕНИЯ атрибута
+ *             `section-is` на самом маркере. Имя в атрибуте = класс секции.
  *
- *             Маркеры берутся в DOM-порядке (первое совпадение с
- *             селектором `[section-is]` — это маркер #1, и т.д.).
- *             Значения самого атрибута `section-is` НЕ читаются —
- *             порядок задаёт всё.
+ *             Пример:
+ *               <div section-is="manifesto">…</div>     →  ищется .manifesto
+ *               <div section-is="section-logo">…</div>  →  ищется .section-logo
+ *
+ *             Преимущества такого подхода:
+ *               - Менять порядок маркеров в Webflow можно без правки кода
+ *               - Добавлять/убирать маркеры можно без правки кода
+ *               - Опечатка в атрибуте видна сразу в консоли
  *
  * Зависимости:
  *   - GSAP 3.12.x
  *   - ScrollTrigger
  *
  * Webflow селекторы:
- *   - .section-marker-wrap   — обёртка со всеми маркерами (контекст вёрстки)
- *   - [section-is]           — отдельные маркеры (4 штуки)
+ *   - .sections-marker          — обёртка со всеми маркерами
+ *   - .section-marker-wrap      — отдельный маркер (изначально opacity: 0 в CSS)
+ *   - [section-is="..."]        — атрибут с именем класса секции
  *
  * Подключение:
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/sections-marker.js"></script>
@@ -35,47 +37,60 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ---- Жёсткое сопоставление маркер ↔ класс секции по порядку ----
-  const SECTIONS = ["manifesto", "section-logo", "section-cases", "stages"];
+  // ---- Тайминги ----
+  const FADE_DURATION_IN = 0.4;
+  const FADE_DURATION_OUT = 0.25;
+  const REFRESH_DELAY_MS = 500;
 
-  const markers = document.querySelectorAll('[section-is]');
-  if (markers.length === 0) return;
+  // ---- Поиск маркеров ----
+  const markers = document.querySelectorAll("[section-is]");
+  if (markers.length === 0) {
+    console.warn("[Need Vision] sections-marker.js: не найдено ни одного маркера [section-is]");
+    return;
+  }
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // ---- Тайминги ----
-  const FADE_DURATION = 0.3;
-
-  // ---- Установка opacity с `!important` ----
-  // Перебивает Webflow Interactions (IX2), если они одновременно
-  // управляют opacity тех же элементов.
+  // ---- Управление opacity с !important ----
+  // !important нужен чтобы перебить Webflow Interactions (IX2), которые
+  // могут управлять opacity тех же элементов одновременно с этим скриптом
   function setOpacity(el, value, animate = true) {
     if (!animate) {
-      el.style.setProperty('opacity', String(value), 'important');
+      el.style.setProperty("opacity", String(value), "important");
       return;
     }
+
     gsap.to(el, {
       opacity: value,
-      duration: FADE_DURATION,
+      duration: value === 1 ? FADE_DURATION_IN : FADE_DURATION_OUT,
       ease: value === 1 ? "power2.out" : "power2.in",
       overwrite: "auto",
       onUpdate: function () {
-        el.style.setProperty('opacity', this.targets()[0].style.opacity, 'important');
+        el.style.setProperty("opacity", this.targets()[0].style.opacity, "important");
       }
     });
   }
 
-  // ---- Привязываем каждый маркер к своей секции ----
-  SECTIONS.forEach((sectionClass, idx) => {
-    const marker = markers[idx];
-    if (!marker) {
-      console.warn(`[Need Vision] sections-marker.js: нет маркера #${idx + 1} в DOM`);
+  // ---- Привязка каждого маркера к своей секции ----
+  // Все маркеры стартуют скрытыми (opacity: 0 в CSS уже стоит).
+  // ScrollTrigger включит нужный когда его секция войдёт в верх вьюпорта.
+  let activeMarkersCount = 0;
+
+  markers.forEach((marker) => {
+    const sectionName = marker.getAttribute("section-is");
+
+    if (!sectionName || sectionName.trim() === "") {
+      console.warn("[Need Vision] sections-marker.js: маркер без значения section-is", marker);
       return;
     }
 
-    const section = document.querySelector('.' + sectionClass);
+    // Поддерживаем как селектор с точкой, так и без неё
+    // (на случай если в Webflow кто-то напишет section-is=".manifesto")
+    const cleanName = sectionName.replace(/^\./, "");
+    const section = document.querySelector("." + cleanName);
+
     if (!section) {
-      console.warn(`[Need Vision] sections-marker.js: секция .${sectionClass} не найдена`);
+      console.warn(`[Need Vision] sections-marker.js: секция .${cleanName} не найдена для маркера`, marker);
       return;
     }
 
@@ -83,17 +98,33 @@ document.addEventListener("DOMContentLoaded", () => {
       trigger: section,
       start: "top top",
       end: "bottom top",
-      onEnter: () => setOpacity(marker, 1),
-      onLeave: () => setOpacity(marker, 0),
+      onEnter:     () => setOpacity(marker, 1),
+      onLeave:     () => setOpacity(marker, 0),
       onEnterBack: () => setOpacity(marker, 1),
       onLeaveBack: () => setOpacity(marker, 0)
     });
 
-    // Если на момент загрузки страница уже внутри этой секции —
-    // сразу показать маркер без анимации
-    if (trigger.isActive) setOpacity(marker, 1, false);
+    // Если страница уже внутри этой секции (например при перезагрузке
+    // или загрузке с якорем) — показываем маркер сразу без анимации
+    if (trigger.isActive) {
+      setOpacity(marker, 1, false);
+    }
+
+    activeMarkersCount++;
   });
 
-  // ---- Refresh после возможного позднего layout Webflow ----
-  setTimeout(() => ScrollTrigger.refresh(), 500);
+  if (activeMarkersCount === 0) {
+    console.warn("[Need Vision] sections-marker.js: ни один маркер не был привязан к секции");
+    return;
+  }
+
+  // ---- Refresh после позднего layout Webflow ----
+  // Webflow иногда дорисовывает шрифты/изображения после DOMContentLoaded,
+  // что меняет высоту секций и сбивает координаты ScrollTrigger
+  setTimeout(() => ScrollTrigger.refresh(), REFRESH_DELAY_MS);
+
+  // Дополнительный refresh после полной загрузки страницы (картинки, шрифты)
+  window.addEventListener("load", () => {
+    ScrollTrigger.refresh();
+  });
 });
