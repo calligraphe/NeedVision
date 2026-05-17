@@ -1,0 +1,31 @@
+# Cloudflare custom headers для статических ассетов.
+# Формат: Cloudflare Pages / Workers Static Assets _headers.
+#
+# ЗАЧЕМ: без явного charset=utf-8 браузер при прямом открытии URL
+# показывает кракозябры (UTF-8 байты как Latin-1), а при загрузке
+# скрипта может неправильно декодировать non-ASCII строки в коде
+# (например, шаблонные литералы с кириллицей в .innerHTML / textContent).
+
+/styles/*
+  Content-Type: text/css; charset=utf-8
+
+/navigation/*
+  Content-Type: text/javascript; charset=utf-8
+
+/widgets/*
+  Content-Type: text/javascript; charset=utf-8
+
+/hero/*
+  Content-Type: text/javascript; charset=utf-8
+
+/manifesto/*
+  Content-Type: text/javascript; charset=utf-8
+
+/bento/*
+  Content-Type: text/javascript; charset=utf-8
+
+/sections/*
+  Content-Type: text/javascript; charset=utf-8
+
+/sliders/*
+  Content-Type: text/javascript; charset=utf-8
