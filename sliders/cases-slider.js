@@ -2,11 +2,17 @@
  * NEED.VISION — Карусель кейсов
  * =============================
  *
- * Что делает: горизонтальная карусель кейсов с управлением через GSAP
- *             Observer (свайп / drag), клик по точкам и карточкам, плюс
- *             кастомный курсор-иконка в зоне `.case-click-zone`.
- *             Активная карточка визуально выделяется (тёмный фон / белый
- *             текст / инвертированное лого), остальные — на белом.
+ * Что делает: горизонтальная карусель кейсов. Управление:
+ *               - клик по карточке         → активировать её
+ *               - drag/swipe по карточке   → следующий/предыдущий слайд
+ *               - клик по точке-индикатору → активировать слайд
+ *             Drag привязан НЕ к широкой области `.cases_slider-track`,
+ *             а к самим карточкам (`.case_card`) — курсор `grab`
+ *             показывает, что тянуть можно именно за карточку.
+ *             Активная карточка визуально выделяется (тёмный фон /
+ *             белый текст / инвертированное лого).
+ *             Дополнительно: кастомный курсор-иконка в зоне
+ *             `.case-click-zone` (клик ведёт на страницу кейса).
  *
  * Зависимости:
  *   - GSAP 3.12.x
@@ -209,35 +215,39 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // DRAG/SWIPE через GSAP Observer
+  // КЛИК И DRAG/SWIPE НА КАРТОЧКАХ
   // ==========================================
-  if (track) {
-    track.style.cursor = 'grab';
+  // Один Observer на каждую `.case_card`:
+  //   - чистый клик (без движения)  → активировать карточку
+  //   - drag/свайп влево            → следующий слайд
+  //   - drag/свайп вправо           → предыдущий слайд
+  // GSAP Observer сам разводит «клик» и «drag»: если за время нажатия
+  // пройдено меньше DRAG_MIN пикселей, событие считается кликом и
+  // вызывается onClick; иначе — направленный onLeft/onRight.
+  slides.forEach((slide, i) => {
+    slide.style.cursor = 'grab';
 
     Observer.create({
-      target: track,
+      target: slide,
       type: "touch,pointer",
       dragMinimum: DRAG_MIN,
       tolerance: DRAG_TOLERANCE,
-      onPress: () => { track.style.cursor = 'grabbing'; },
-      onRelease: () => { track.style.cursor = 'grab'; },
+      onPress: () => { slide.style.cursor = 'grabbing'; },
+      onRelease: () => { slide.style.cursor = 'grab'; },
       onLeft: () => nextSlide(),
-      onRight: () => prevSlide()
-    });
-  }
-
-  // ==========================================
-  // КЛИКИ ПО КАРТОЧКАМ И ТОЧКАМ
-  // ==========================================
-  slides.forEach((slide, i) => {
-    slide.addEventListener('click', () => {
-      if (activeIndex !== i) {
-        activeIndex = i;
-        updateSlider(activeIndex);
+      onRight: () => prevSlide(),
+      onClick: () => {
+        if (activeIndex !== i) {
+          activeIndex = i;
+          updateSlider(activeIndex);
+        }
       }
     });
   });
 
+  // ==========================================
+  // КЛИКИ ПО ТОЧКАМ-ИНДИКАТОРАМ
+  // ==========================================
   dots.forEach((dot, i) => {
     dot.addEventListener('click', () => {
       if (activeIndex !== i) {
