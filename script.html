@@ -1,0 +1,1778 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Observer.min.js"></script>
+
+
+<link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.7/themes/odometer-theme-minimal.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/odometer.js/0.4.7/odometer.min.js"></script>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+
+
+
+<style>
+    .nav-blur-bg {
+        /* Уменьшаем силу размытия для деликатности */
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+
+        /* Плавная маска с промежуточными шагами */
+        -webkit-mask-image: linear-gradient(to bottom,
+                black 0%,
+                black 60%,
+                /* Полное размытие до 60% высоты */
+                rgba(0, 0, 0, 0.6) 80%,
+                rgba(0, 0, 0, 0.2) 92%,
+                transparent 100%
+                /* Полное исчезновение в самом конце */
+            );
+        mask-image: linear-gradient(to bottom,
+                black 0%,
+                black 60%,
+                rgba(0, 0, 0, 0.6) 80%,
+                rgba(0, 0, 0, 0.2) 92%,
+                transparent 100%);
+    }
+</style>
+
+
+
+
+
+
+<style>
+    /* ==========================================
+   СТИЛИ ДЛЯ ЭФФЕКТА ФОНАРИКА
+   ========================================== */
+    .spotlight-overlay {
+        pointer-events: none;
+
+        /* Дефолтная позиция (по центру) */
+        --mouse-x: 50%;
+        --mouse-y: 50%;
+
+        /* РАЗМЕР ФОНАРИКА */
+        --spotlight-size: 50vw;
+
+        /* Градиент */
+        background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
+                rgba(0, 0, 0, 0) 0%,
+                /* Центр — прозрачный */
+                rgba(0, 0, 0, 0.85) 45%,
+                /* Полутень */
+                rgba(0, 0, 0, 1) 75%
+                /* Темнота */
+            );
+    }
+</style>
+
+
+
+
+<style>
+    /* Базовое (маленькое) состояние карточки */
+    .swiper-slide {
+        transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        /* Если в Webflow слетят размеры, они жестко зафиксируются тут */
+        width: 6vw !important;
+        height: 8vw !important;
+        opacity: 0.6;
+        /* Боковые карточки чуть затемнены */
+    }
+
+    /* Активное (центральное) состояние карточки */
+    .swiper-slide.swiper-slide-active {
+        width: 22vw !important;
+        height: 32vw !important;
+        opacity: 1;
+    }
+
+    /* Прячем имя у неактивных карточек */
+    .swiper-slide .team_member-name {
+        opacity: 0;
+        transition: opacity 0.6s ease;
+    }
+
+    /* Показываем имя у центральной карточки */
+    .swiper-slide.swiper-slide-active .team_member-name {
+        opacity: 1;
+    }
+</style>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        gsap.registerPlugin(ScrollTrigger);
+
+        // ==========================================
+        // 1. ПРЕДУСТАНОВКА
+        // ==========================================
+
+        // PROFIT-счётчик изначально скрыт
+        gsap.set(".nav-profit", {
+            opacity: 0,
+            width: 0,
+            overflow: "hidden",
+            whiteSpace: "nowrap"
+        });
+
+        gsap.set(".nav-profit-item", {
+            opacity: 0,
+            y: 10
+        });
+
+        // Меню изначально схлопнуто
+        gsap.set(".menu_overlay-content", {
+            height: 0,
+            opacity: 0
+        });
+
+        // Backdrop изначально невидим и не кликабелен
+        gsap.set(".menu_backdrop", {
+            opacity: 0,
+            pointerEvents: "none"
+        });
+
+
+        // ==========================================
+        // 2. ОСНОВНОЙ ТАЙМЛАЙН СКРОЛЛА
+        // ==========================================
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: "body",
+                start: "top top",
+                end: "+=800",
+                scrub: 1,
+            }
+        });
+
+
+        // ==========================================
+        // 3. КОНТЕЙНЕР ПРЕВРАЩАЕТСЯ В ПЛАШКУ
+        // ==========================================
+        tl.to(".container__1440px", {
+            maxWidth: "28vw",
+            backgroundColor: "#ffffff",
+            borderRadius: "1.5vw",
+            paddingTop: "0.5vw",
+            paddingBottom: "0.5vw",
+            paddingLeft: "1vw",
+            paddingRight: "1vw",
+            margin: "0.7vw auto 0 auto",
+            duration: 0.4
+        }, 0)
+
+            .to(".container__1440px *", {
+                color: "#000000",
+                duration: 0.4
+            }, 0)
+
+            .to(".case__link, .nav-menu, .nav-menu__txt, .nav-profit, .nav-profit-item", {
+                fontSize: "0.7vw",
+                duration: 0.4
+            }, 0)
+
+
+            // ==========================================
+            // 4. ИСЧЕЗАЮЩИЕ ЭЛЕМЕНТЫ
+            // ==========================================
+            .to(".nav_left-icon", {
+                width: 0, height: 0, opacity: 0,
+                duration: 0.4
+            }, 0)
+
+            .to(".nav_right-icon", {
+                width: 0, height: 0, opacity: 0,
+                duration: 0.4
+            }, 0)
+
+            .to(".nav-timer", {
+                width: 0, height: 0, opacity: 0,
+                duration: 0.4
+            }, 0)
+
+
+            // ==========================================
+            // 5. СЖИМАЕМ GAP'Ы
+            // ==========================================
+            .to(".nav-left", {
+                gap: "0vw",
+                duration: 0.4
+            }, 0)
+
+            .to(".nav_right", {
+                gap: "0vw",
+                duration: 0.4
+            }, 0)
+
+            .to(".nav_lleft-wrapper", {
+                gap: "0vw",
+                duration: 0.4
+            }, 0)
+
+
+            // ==========================================
+            // 6. ПОЯВЛЕНИЕ PROFIT-СЧЁТЧИКА
+            // ==========================================
+            .to(".nav-profit", {
+                width: "auto",
+                opacity: 1,
+                margin: "0 1vw",
+                duration: 0.4
+            }, 0)
+
+            .to(".nav-profit-item", {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                stagger: 0.15,
+                ease: "power2.out"
+            }, 0)
+
+
+            // ==========================================
+            // 7. ЛОГОТИП NEED.VISION
+            // ==========================================
+            .to(".nav-logo_img", {
+                width: "62%",
+                top: "4vw",
+                duration: 0.5,
+                ease: "power2.out"
+            }, 0)
+
+
+            // ==========================================
+            // 8. ИНВЕРСИЯ ИКОНОК
+            // ==========================================
+            .to(".nav-icon", {
+                filter: "invert(1)",
+                duration: 0.4
+            }, 0);
+
+
+        // ==========================================
+        // 9. ИНВЕРСИЯ НАВИГАЦИИ НАД БЕЛЫМ ФОНОМ (Stages)
+        // ==========================================
+        const navInvertTl = gsap.timeline({
+            scrollTrigger: {
+                trigger: ".stages",
+                start: "top 85%",
+                end: "top 25%",
+                scrub: true
+            }
+        });
+
+        navInvertTl.fromTo(".container__1440px",
+            { backgroundColor: "#ffffff" },
+            { backgroundColor: "#040101", duration: 1, immediateRender: false },
+            0);
+
+        navInvertTl.fromTo(".container__1440px *",
+            { color: "#000000" },
+            { color: "#ffffff", duration: 1, immediateRender: false },
+            0);
+
+        navInvertTl.fromTo(".nav-btm, .nav-btm *",
+            { color: "#ffffff" },
+            { color: "#000000", duration: 1, immediateRender: false },
+            0);
+
+        navInvertTl.fromTo(".nav-logo_img",
+            { filter: "invert(0)" },
+            { filter: "invert(1)", duration: 1, immediateRender: false },
+            0);
+
+        navInvertTl.fromTo(".nav-icon",
+            { filter: "invert(1)" },
+            { filter: "invert(0)", duration: 1, immediateRender: false },
+            0);
+
+
+        // ==========================================
+        // 10. КЛИК-МЕНЮ (открытие/закрытие)
+        // ==========================================
+        const menuBtn = document.querySelector('.nav-menu');
+        const menuPanel = document.querySelector('.menu_overlay-content');
+        const menuTxt = document.querySelector('.nav-menu__txt');
+        const menuIcon = document.querySelector('.nav-menu__img');
+        const menuClose = document.querySelector('.menu_close-trigger');
+        const menuBackdrop = document.querySelector('.menu_backdrop');
+
+        if (menuBtn && menuPanel) {
+            let isOpen = false;
+
+            function openMenu() {
+                isOpen = true;
+
+                // Разворачиваем панель
+                gsap.to(menuPanel, {
+                    height: "auto",
+                    opacity: 1,
+                    duration: 0.6,
+                    ease: "power3.out"
+                });
+
+                // Backdrop появляется вместе с меню
+                if (menuBackdrop) {
+                    gsap.to(menuBackdrop, {
+                        opacity: 1,
+                        duration: 0.5,
+                        ease: "power2.out",
+                        pointerEvents: "auto"
+                    });
+                }
+
+                // MENU → CLOSE на верхней кнопке
+                gsap.to(menuTxt, {
+                    opacity: 0,
+                    duration: 0.15,
+                    onComplete: () => {
+                        menuTxt.textContent = "CLOSE";
+                        gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+                    }
+                });
+
+                if (menuIcon) {
+                    gsap.to(menuIcon, {
+                        rotation: 45,
+                        duration: 0.4,
+                        ease: "power2.out"
+                    });
+                }
+            }
+
+            function closeMenu() {
+                isOpen = false;
+
+                // Сворачиваем панель
+                gsap.to(menuPanel, {
+                    height: 0,
+                    opacity: 0,
+                    duration: 0.5,
+                    ease: "power3.in"
+                });
+
+                // Backdrop исчезает вместе с меню
+                if (menuBackdrop) {
+                    gsap.to(menuBackdrop, {
+                        opacity: 0,
+                        duration: 0.4,
+                        ease: "power2.in",
+                        pointerEvents: "none"
+                    });
+                }
+
+                // CLOSE → MENU
+                gsap.to(menuTxt, {
+                    opacity: 0,
+                    duration: 0.15,
+                    onComplete: () => {
+                        menuTxt.textContent = "MENU";
+                        gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+                    }
+                });
+
+                if (menuIcon) {
+                    gsap.to(menuIcon, {
+                        rotation: 0,
+                        duration: 0.4,
+                        ease: "power2.out"
+                    });
+                }
+            }
+
+            // Клик по верхней кнопке MENU/CLOSE
+            menuBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                isOpen ? closeMenu() : openMenu();
+            });
+
+            // Клик по menu_close-trigger (внутри развёрнутого меню)
+            if (menuClose) {
+                menuClose.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (isOpen) closeMenu();
+                });
+            }
+
+            // Клик по backdrop — закрыть
+            if (menuBackdrop) {
+                menuBackdrop.addEventListener('click', () => {
+                    if (isOpen) closeMenu();
+                });
+            }
+
+            // Esc — закрыть
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isOpen) closeMenu();
+            });
+
+            // Клик по ссылке меню — закрыть
+            const links = menuPanel.querySelectorAll('.nav_menu-link');
+            links.forEach(link => {
+                link.addEventListener('click', () => {
+                    closeMenu();
+                });
+            });
+        }
+
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        // Регистрируем плагин скролла
+        gsap.registerPlugin(ScrollTrigger);
+
+        // 1. ПРЕДУСТАНОВКА (Initial States)
+        // Убедимся, что картинка изначально узкая полоска
+        gsap.set(".hero__img", {
+            width: "0.01vw",
+            overflow: "hidden"
+        });
+
+        // 2. СОЗДАНИЕ ТАЙМЛАЙНА С ПРИВЯЗКОЙ К СКРОЛЛУ
+        gsap.to(".hero__img", {
+            width: "45vw", // Финальная ширина
+            ease: "none",  // Обязательно "none" для scrub, чтобы анимация шла ровно за пальцем
+            scrollTrigger: {
+                trigger: ".hero-image", // Главный контейнер высотой 1500px
+                start: "top top",       // Начинаем анимацию, когда верх контейнера доходит до верха экрана
+                end: "bottom bottom",   // Заканчиваем, когда прокрутили все 1500px высоты
+                scrub: 1                // Мягкая доводка в 1 секунду при скролле
+            }
+        });
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+        gsap.registerPlugin(ScrollTrigger);
+
+        // ==========================================
+        // 1. БЕСШОВНАЯ БЕГУЩАЯ СТРОКА (MARQUEE)
+        // ==========================================
+        const marquee = document.querySelector(".marquee-wrapper");
+        if (marquee) {
+            // Дублируем содержимое — клонируем всех детей и добавляем в конец
+            const originalContent = marquee.innerHTML;
+            marquee.innerHTML = originalContent + originalContent;
+
+            // Анимируем на -50% (одна копия уехала, вторая на её месте — петля бесшовна)
+            gsap.to(marquee, {
+                xPercent: -50,
+                repeat: -1,
+                duration: 30,        // <-- было 15. Удвоили дистанцию => удвоили длительность для той же скорости
+                ease: "none",
+                force3D: true
+            });
+        }
+
+        // ==========================================
+        // 2. СМЕНА ФОНА КНОПКИ (Оранжевые секции)
+        // ==========================================
+        function setNavTheme(theme) {
+            if (theme === 'orange') {
+                gsap.to(".nav-cta__btn", { backgroundColor: "#FF6038", color: "#ffffff", duration: 0.3, overwrite: "auto" });
+                gsap.to(".nav-cta__btn *", { color: "#ffffff", duration: 0.3, overwrite: "auto" });
+            } else {
+                gsap.to(".nav-cta__btn", { backgroundColor: "#ffffff", color: "#000000", duration: 0.3, overwrite: "auto" });
+                gsap.to(".nav-cta__btn *", { color: "#000000", duration: 0.3, overwrite: "auto" });
+            }
+        }
+        const orangeSections = gsap.utils.toArray(".is-orange-nav");
+        if (orangeSections.length > 0) {
+            orangeSections.forEach(section => {
+                ScrollTrigger.create({
+                    trigger: section,
+                    start: "top 80px",
+                    end: "bottom 80px",
+                    onEnter: () => setNavTheme('orange'),
+                    onLeave: () => setNavTheme('white'),
+                    onEnterBack: () => setNavTheme('orange'),
+                    onLeaveBack: () => setNavTheme('white')
+                });
+            });
+        }
+
+        // ==========================================
+        // 3. ЖЕСТКАЯ ИНВЕРСИЯ НАД БЕЛЫМ ФОНОМ (Stages)
+        // ==========================================
+        const stagesSection = document.querySelector(".stages");
+
+        if (stagesSection) {
+            gsap.to(".nav-cta__btn", {
+                backgroundColor: "#040101",
+                ease: "none",
+                immediateRender: false,
+                scrollTrigger: {
+                    trigger: stagesSection,
+                    start: "top 85%",
+                    end: "top 25%",
+                    scrub: true
+                }
+            });
+            gsap.to(".nav-cta__btn *, .marquee-wrapper, .marquee-wrapper *", {
+                color: "#ffffff",
+                ease: "none",
+                immediateRender: false,
+                scrollTrigger: {
+                    trigger: stagesSection,
+                    start: "top 85%",
+                    end: "top 25%",
+                    scrub: true
+                }
+            });
+        }
+
+        // ==========================================
+        // 4. ИСЧЕЗНОВЕНИЕ КНОПКИ В ФУТЕРЕ
+        // ==========================================
+        const footerEl = document.querySelector(".footer") || document.querySelector("footer");
+
+        if (footerEl) {
+            gsap.to(".nav-cta__btn", {
+                y: 150,
+                opacity: 0,
+                pointerEvents: "none",
+                ease: "none",
+                immediateRender: false,
+                scrollTrigger: {
+                    trigger: footerEl,
+                    start: "top 95%",
+                    end: "top 75%",
+                    scrub: true
+                }
+            });
+        }
+    });
+</script>
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const counterElement = document.querySelector('.amount-counter');
+
+        if (!counterElement) return;
+
+        // Исходное число
+        let currentAmount = 400800400;
+
+        // Настраиваем Odometer с разделителем-пробелом
+        const od = new Odometer({
+            el: counterElement,
+            value: currentAmount,
+            format: ' ddd', // Формат с пробелом перед разрядами
+            theme: 'minimal'
+        });
+
+        // CSS-фикс: Принудительно задаем пробел между цифрами и наследуем твой шрифт
+        const style = document.createElement('style');
+        style.innerHTML = `
+    .odometer.odometer-auto-theme .odometer-digit-separator, 
+    .odometer .odometer-digit-separator {
+      display: inline-block !important;
+      width: 0.35em !important; /* Настраивает ширину пробела между разрядами */
+      content: " " !important;
+    }
+    .odometer.odometer-auto-theme, .odometer {
+      font-family: inherit; /* Наследует шрифт твоего проекта из Webflow */
+    }
+  `;
+        document.head.appendChild(style);
+
+        // Функция обновления
+        function updateCounter() {
+            currentAmount += 15; // Прибавляем 15 к числу
+            od.update(currentAmount); // Запускаем анимацию барабана
+
+            // Генерируем случайное время от 15 до 20 секунд
+            const nextInterval = Math.floor(Math.random() * (20000 - 15000 + 1)) + 15000;
+
+            // Рекурсивно запускаем следующий шаг
+            setTimeout(updateCounter, nextInterval);
+        }
+
+        // Запускаем первый цикл через 15-20 секунд после загрузки страницы
+        const initialInterval = Math.floor(Math.random() * (20000 - 15000 + 1)) + 15000;
+        setTimeout(updateCounter, initialInterval);
+    });
+</script>
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        // ==========================================
+        // 1. ОПРЕДЕЛЕНИЕ ТОЛЬКО ГОРОДА
+        // ==========================================
+        const placeElement = document.querySelector('.timer-place');
+
+        if (placeElement) {
+            // Запрашиваем у гео-сервиса только город
+            fetch('http://ip-api.com/json/?fields=status,city')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.city) {
+                        // Выводим только город в верхнем регистре
+                        placeElement.textContent = data.city.toUpperCase();
+                    } else {
+                        placeElement.textContent = "ALMATY"; // Запасной вариант при ошибке
+                    }
+                })
+                .catch(() => {
+                    placeElement.textContent = "ALMATY"; // Запасной вариант при сбое сети
+                });
+        }
+
+        // ==========================================
+        // 2. ДИНАМИЧЕСКИЕ ЧАСЫ (12-часовой формат)
+        // ==========================================
+        const timeElement = document.querySelector('.timer-time');
+
+        function updateTime() {
+            if (!timeElement) return;
+
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+
+            // Переводим в 12-часовой формат
+            hours = hours % 12;
+            hours = hours ? hours : 12; // Если 0 часов, ставим 12
+
+            // Добавляем ведущий ноль к минутам
+            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+
+            // Собираем итоговую строку времени
+            timeElement.textContent = `${hours}:${minutesStr} ${ampm}`;
+        }
+
+        // Запускаем часы сразу при загрузке страницы
+        updateTime();
+
+        // Обновляем каждую минуту (60000 миллисекунд)
+        setInterval(updateTime, 60000);
+
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        gsap.registerPlugin(ScrollTrigger);
+
+        // 1. ПРЕДУСТАНОВКА (Initial States)
+        // Принудительно опускаем тексты на 30px, делаем прозрачными и размытыми
+        gsap.set(".man-anim__txt", {
+            y: 30,
+            opacity: 0,
+            filter: "blur(20px)" // <-- стартовый блюр
+        });
+
+        // 2. АНИМАЦИЯ ПО СКРОЛЛУ
+        gsap.to(".man-anim__txt", {
+            y: 0,                  // Поднимаем в исходную позицию
+            opacity: 1,            // Проявляем полностью
+            filter: "blur(0px)",   // <-- финальное состояние: резко
+            duration: 1,           // Относительная длительность
+            stagger: 0.2,          // Каскадное появление (один за другим)
+            ease: "power2.out",    // Плавное замедление в конце
+            scrollTrigger: {
+                trigger: ".manifesto", // Родительский блок на 1400px
+                start: "top center",   // Анимация начинается, когда верх manifesto доходит до центра экрана
+                end: "+=600",          // Анимация длится ровно 600 пикселей скролла
+                scrub: 1               // Плавная привязка к движению колеса мыши
+            }
+        });
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        gsap.registerPlugin(ScrollTrigger);
+
+        const cards = document.querySelectorAll('.bento_card.is-parallax');
+        if (cards.length === 0) return;
+
+        const tl = gsap.timeline({
+            scrollTrigger: {
+                trigger: ".parallax-sticky",
+                start: "top top",
+                end: "bottom top",
+                scrub: 3,                         // <-- было 2, теперь 3 — плавнее
+                invalidateOnRefresh: true
+            }
+        });
+
+        // =========================================================
+        // ФАЗА 1: ПОЯВЛЕНИЕ — ещё длиннее
+        // =========================================================
+        cards.forEach(card => {
+            const attrStart = card.getAttribute('data-start-y');
+            const startY = attrStart ? parseFloat(attrStart) : 600;
+
+            tl.fromTo(card, {
+                y: startY,
+                opacity: 0
+            }, {
+                y: 0,
+                opacity: 1,
+                duration: 5,                      // <-- было 3, теперь 5
+                ease: "power2.out",
+                force3D: true
+            }, 0);
+        });
+
+        // =========================================================
+        // ПАУЗА — короткая
+        // =========================================================
+        tl.to({}, { duration: 1 });
+
+        // =========================================================
+        // ФАЗА 2: УХОД ВВЕРХ — ещё длиннее
+        // =========================================================
+        cards.forEach(card => {
+            const attrEnd = card.getAttribute('data-end-y');
+            const endY = attrEnd ? parseFloat(attrEnd) : -510;
+
+            const attrDelay = card.getAttribute('data-exit-delay');
+            const exitDelay = attrDelay ? parseFloat(attrDelay) : 0;
+
+            tl.to(card, {
+                y: endY,
+                opacity: 0,
+                duration: 5,                      // <-- было 3, теперь 5
+                ease: "power2.in",
+                force3D: true
+            }, 6 + exitDelay);                  // <-- было 4, сдвинули старт (5 + 1 пауза)
+        });
+
+    });
+</script>
+
+
+
+
+
+
+
+<script>
+    // =========================================================
+    // АНИМАЦИЯ ПОЯВЛЕНИЯ ТЕКСТА В НОВОЙ СЕКЦИИ
+    // =========================================================
+
+    // Находим все тексты, которые должны плавно появиться (замени селектор на свой, если нужно)
+    const logoRevealTexts = document.querySelectorAll('.logo-anim__txt');
+
+    if (logoRevealTexts.length > 0) {
+        // Изначально опускаем тексты, делаем прозрачными и размытыми
+        gsap.set(logoRevealTexts, {
+            y: 100,
+            opacity: 0,
+            filter: "blur(20px)" // <-- стартовый блюр
+        });
+
+        gsap.to(logoRevealTexts, {
+            y: 0,
+            opacity: 1,
+            filter: "blur(0px)",  // <-- финальное состояние: резко
+            duration: 1,
+            stagger: 0.2,         // Каскадное появление
+            ease: "power2.out",
+            scrollTrigger: {
+                trigger: ".section-logo", // Триггер - сама секция
+                start: "top 80%",         // Начинаем анимацию, когда верх секции покажется на 20%
+                end: "top 30%",           // Заканчиваем, когда секция поднимется выше
+                scrub: 1                  // Привязка к скроллу
+            }
+        });
+    }
+</script>
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", (event) => {
+        // =========================================================
+        // МАССОВАЯ И БЕСКОНЕЧНАЯ СМЕНА ЛОГОТИПОВ (ПО 3-4 ШТУКИ)
+        // =========================================================
+
+        const visibleSlots = document.querySelectorAll('.logo-grid_img-visible');
+        const poolImages = document.querySelectorAll('.logo-hidden-pool .logo-grid_img');
+
+        if (visibleSlots.length === 0 || poolImages.length === 0) return;
+
+        const allLogosSrc = Array.from(poolImages).map(img => img.src);
+        let currentVisibleSrc = Array.from(visibleSlots).map(img => img.src);
+
+        function swapBatchLogos() {
+            // 1. Ищем логотипы в пуле, которых СЕЙЧАС НЕТ на экране
+            let availableLogos = allLogosSrc.filter(src => !currentVisibleSrc.includes(src));
+
+            if (availableLogos.length === 0) return;
+
+            // 2. Выбираем, сколько логотипов поменяем в этот раз (от 3 до 4)
+            // Функция random(min, max, snap) - snap:1 означает целые числа
+            let swapCount = gsap.utils.random(3, 4, 1);
+
+            // Защита: если в пуле осталось меньше 3-4 свободных логотипов, берем сколько есть
+            if (availableLogos.length < swapCount) swapCount = availableLogos.length;
+
+            // 3. Перемешиваем доступные новые логотипы и берем первые 3-4 штуки
+            let shuffledNewLogos = gsap.utils.shuffle([...availableLogos]);
+            let newLogosToUse = shuffledNewLogos.slice(0, swapCount);
+
+            // 4. Создаем массив индексов (от 0 до 15), перемешиваем его и выбираем 3-4 ячейки для замены
+            let slotIndices = Array.from({ length: visibleSlots.length }, (_, i) => i);
+            let slotsToReplace = gsap.utils.shuffle(slotIndices).slice(0, swapCount);
+
+            // 5. Запускаем анимацию для каждой выбранной ячейки
+            slotsToReplace.forEach((slotIndex, i) => {
+                let slotToChange = visibleSlots[slotIndex];
+                let newLogoSrc = newLogosToUse[i];
+
+                gsap.to(slotToChange, {
+                    opacity: 0,
+                    duration: 0.6,
+                    ease: "power1.inOut",
+                    onComplete: () => {
+                        // Подменяем картинку и убиваем srcset Webflow
+                        slotToChange.src = newLogoSrc;
+                        slotToChange.removeAttribute('srcset');
+                        slotToChange.removeAttribute('sizes');
+
+                        // Обновляем базу данных видимых картинок
+                        currentVisibleSrc[slotIndex] = newLogoSrc;
+
+                        // Плавно проявляем
+                        gsap.to(slotToChange, {
+                            opacity: 1,
+                            duration: 0.6,
+                            ease: "power1.inOut"
+                        });
+                    }
+                });
+            });
+
+            // 6. БЕСКОНЕЧНЫЙ ЦИКЛ: Планируем следующую массовую замену
+            // Раз мы меняем по 3-4 штуки, интервал можно сделать чуть больше (от 2 до 4 секунд)
+            const nextSwapTime = gsap.utils.random(2000, 4000);
+            setTimeout(swapBatchLogos, nextSwapTime);
+        }
+
+        // Запускаем самую первую замену через 2 секунды после загрузки
+        setTimeout(swapBatchLogos, 2000);
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        gsap.registerPlugin(Observer);
+
+        const slides = document.querySelectorAll('.case_card');
+        const track = document.querySelector('.cases_slider-track');
+        const dots = document.querySelectorAll('.cases_slider-dot');
+        const bgImages = document.querySelectorAll('.case_bg-image');
+        const fractionTxt = document.querySelector('.cases_fraction-txt');
+
+        // Кликабельная зона (бывшая drag-zone) — ведёт на страницу кейса
+        const clickZone = document.querySelector('.case-click-zone');
+        const mouseClickIcon = document.querySelector('.case-mouse-click');
+
+        if (slides.length === 0 || !track) return;
+
+        let activeIndex = 0;
+        const totalSlides = slides.length;
+        let isAnimating = false;
+
+        gsap.set(bgImages, { opacity: 0 });
+
+        // ==========================================
+        // КАСТОМНЫЙ КУРСОР В ЗОНЕ КЛИКА
+        // ==========================================
+        if (clickZone && mouseClickIcon) {
+            // Прячем стандартный курсор в зоне
+            clickZone.style.cursor = 'none';
+
+            // Стилизуем кастомный курсор
+            mouseClickIcon.style.cssText += `
+      position: fixed !important;
+      pointer-events: none !important;
+      z-index: 9999 !important;
+      opacity: 0 !important;
+      transform: translate(-50%, -50%) !important;
+      transition: opacity 0.2s ease !important;
+    `;
+
+            // Используем GSAP quickTo для плавного следования за мышкой
+            const xTo = gsap.quickTo(mouseClickIcon, "left", { duration: 0.25, ease: "power3.out" });
+            const yTo = gsap.quickTo(mouseClickIcon, "top", { duration: 0.25, ease: "power3.out" });
+
+            clickZone.addEventListener('mouseenter', () => {
+                mouseClickIcon.style.opacity = '1';
+            });
+            clickZone.addEventListener('mouseleave', () => {
+                mouseClickIcon.style.opacity = '0';
+            });
+            clickZone.addEventListener('mousemove', (e) => {
+                xTo(e.clientX);
+                yTo(e.clientY);
+            });
+
+            // Клик по зоне = переход на страницу кейса
+            clickZone.addEventListener('click', () => {
+                const activeSlide = slides[activeIndex];
+                if (!activeSlide) return;
+                // Ищем ссылку внутри активной карточки (data-href на карточке или <a>)
+                const link = activeSlide.querySelector('a')?.getAttribute('href')
+                    || activeSlide.getAttribute('data-href');
+                if (link) {
+                    window.location.href = link;
+                }
+            });
+        }
+
+        // ==========================================
+        // ОСНОВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СЛАЙДЕРА
+        // ==========================================
+        function updateSlider(index) {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            // 1. Сдвигаем трек
+            gsap.to(track, {
+                x: `-${index * 28}vw`,
+                duration: 0.8,
+                ease: "power2.inOut",
+                onComplete: () => { isAnimating = false; }
+            });
+
+            // 2. Фракция
+            if (fractionTxt) {
+                fractionTxt.textContent = `${index + 1}/${totalSlides}`;
+            }
+
+            // 3. Точки
+            dots.forEach((dot, i) => {
+                const fullDot = dot.querySelector('.cases_slider-dot-full');
+                if (fullDot) {
+                    gsap.to(fullDot, {
+                        opacity: i === index ? 1 : 0,
+                        duration: 0.4,
+                        ease: "power2.inOut"
+                    });
+                }
+            });
+
+            // 4. Фоновые изображения
+            bgImages.forEach((bg, i) => {
+                gsap.to(bg, {
+                    opacity: i === index ? 1 : 0,
+                    duration: 0.8,
+                    ease: "power2.inOut"
+                });
+            });
+
+            // 5. Стили внутри карточек
+            slides.forEach((slide, i) => {
+                const content = slide.querySelector('.case_card-content');
+                const tag = slide.querySelector('.case_tag-text');
+                const logo = slide.querySelector('.case_client-logo');
+                const isActive = i === index;
+
+                if (isActive) {
+                    // Активная карточка — на тёмном фоне
+                    gsap.to(content, {
+                        backgroundColor: "transparent",
+                        color: "#ffffff",
+                        duration: 0.4
+                    });
+                    if (tag) tag.classList.add('active');
+                    // Логотип белый (на тёмном)
+                    if (logo) gsap.to(logo, {
+                        filter: "brightness(0) invert(1)",
+                        duration: 0.4
+                    });
+                } else {
+                    // Неактивная карточка — на белом фоне
+                    gsap.to(content, {
+                        backgroundColor: "#ffffff",
+                        color: "#000000",
+                        duration: 0.4
+                    });
+                    if (tag) tag.classList.remove('active');
+                    // Логотип чёрный (на белом) — ИЗМЕНЕНО
+                    if (logo) gsap.to(logo, {
+                        filter: "brightness(0) invert(0)",
+                        duration: 0.4
+                    });
+                }
+            });
+        }
+
+        // ==========================================
+        // ПЕРЕКЛЮЧЕНИЕ
+        // ==========================================
+        function nextSlide() {
+            if (activeIndex < totalSlides - 1) {
+                activeIndex++;
+                updateSlider(activeIndex);
+            }
+        }
+
+        function prevSlide() {
+            if (activeIndex > 0) {
+                activeIndex--;
+                updateSlider(activeIndex);
+            }
+        }
+
+        // ==========================================
+        // ДРАГ ТЕПЕРЬ НА .cases_slider-track
+        // ==========================================
+        if (track) {
+            track.style.cursor = 'grab';
+
+            Observer.create({
+                target: track,
+                type: "touch,pointer",
+                dragMinimum: 10,
+                tolerance: 20,
+                onPress: () => { track.style.cursor = 'grabbing'; },
+                onRelease: () => { track.style.cursor = 'grab'; },
+                onLeft: () => nextSlide(),
+                onRight: () => prevSlide()
+            });
+        }
+
+        // ==========================================
+        // КЛИКИ ПО КАРТОЧКАМ И ТОЧКАМ
+        // ==========================================
+        slides.forEach((slide, i) => {
+            slide.addEventListener('click', () => {
+                if (activeIndex !== i) {
+                    activeIndex = i;
+                    updateSlider(activeIndex);
+                }
+            });
+        });
+
+        dots.forEach((dot, i) => {
+            dot.addEventListener('click', () => {
+                if (activeIndex !== i) {
+                    activeIndex = i;
+                    updateSlider(activeIndex);
+                }
+            });
+        });
+
+        // Первая отрисовка
+        updateSlider(0);
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const partnerSection = document.querySelector('.partner');
+        const spotlightOverlay = document.querySelector('.spotlight-overlay');
+
+        if (partnerSection && spotlightOverlay) {
+            partnerSection.addEventListener('mousemove', (e) => {
+                const rect = partnerSection.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                gsap.to(spotlightOverlay, {
+                    "--mouse-x": `${x}px`,
+                    "--mouse-y": `${y}px`,
+                    duration: 1.8,         // <-- было 0.8, теперь 1.8 — заметно медленнее
+                    ease: "power3.out",    // <-- было power2.out, теперь power3.out — мягче на остановке
+                    overwrite: "auto"
+                });
+            });
+        }
+    });
+</script>
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // ==========================================
+        // 1. СМЕНА ФОНА И ЗАТУХАНИЕ ФОНАРИКА
+        // ==========================================
+        const bgChangeTl = gsap.timeline({
+            scrollTrigger: {
+                trigger: ".stages",
+                start: "top 85%",
+                end: "top 25%",
+                scrub: true
+            }
+        });
+
+        bgChangeTl.to(".spotlight-overlay", {
+            opacity: 0,
+            duration: 0.3
+        }, 0);
+
+        bgChangeTl.to(".about-wrapper", {
+            backgroundColor: "#FFFBF2",
+            duration: 0.7
+        }, 0.3);
+
+
+        // ==========================================
+        // 2. STAGES_IMG — оставляем как было
+        // ==========================================
+        const stageImages = gsap.utils.toArray(".stages_img");
+
+        stageImages.forEach((img) => {
+            img.style.willChange = "filter, transform, opacity";
+            img.style.backfaceVisibility = "hidden";
+
+            gsap.set(img, {
+                y: 100,
+                opacity: 0,
+                filter: "blur(12px)"
+            });
+
+            gsap.to(img, {
+                y: 0,
+                opacity: 1,
+                filter: "blur(0px)",
+                ease: "power2.out",
+                scrollTrigger: {
+                    trigger: img,
+                    start: "top 90%",
+                    end: "top 45%",
+                    scrub: 2.5
+                }
+            });
+        });
+
+
+        // ==========================================
+        // 3. БАРАБАННЫЙ СКРОЛЛ — БЕЛОЕ СВЕЧЕНИЕ ВМЕСТО БЛЮРА
+        // ==========================================
+        const wrappers = gsap.utils.toArray(".stages_text-wrapper");
+        const dotsFull = gsap.utils.toArray(".stages_dot-full");
+        const stepLabel = document.querySelector(".stages_step-label");
+
+        // Состояния "тумана" — белое свечение через text-shadow
+        // Несколько слоёв создают мягкое рассеянное свечение
+        const GLOW = "0 0 12px rgba(255,251,242,1), 0 0 24px rgba(255,251,242,0.9), 0 0 40px rgba(255,251,242,0.7)";
+        const GLOW_SMALL = "0 0 6px rgba(255,251,242,1), 0 0 12px rgba(255,251,242,0.8)";
+        const NO_GLOW = "0 0 0px rgba(255,251,242,0)";
+
+        if (wrappers.length > 0) {
+            wrappers.forEach((wrap) => {
+                const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+                innerTexts.forEach(el => {
+                    el.style.willChange = "text-shadow, transform, opacity";
+                    el.style.backfaceVisibility = "hidden";
+                });
+            });
+
+            if (stepLabel) {
+                stepLabel.style.willChange = "text-shadow, transform, opacity";
+                stepLabel.style.backfaceVisibility = "hidden";
+            }
+
+            wrappers.forEach((wrap, index) => {
+                const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+
+                if (index !== 0) {
+                    gsap.set(innerTexts, {
+                        y: 40,
+                        opacity: 0,
+                        textShadow: GLOW              // <-- белое свечение в скрытом состоянии
+                    });
+                    gsap.set(wrap, { autoAlpha: 0 });
+                } else {
+                    gsap.set(innerTexts, {
+                        y: 0,
+                        opacity: 1,
+                        textShadow: NO_GLOW
+                    });
+                    gsap.set(wrap, { autoAlpha: 1 });
+                }
+            });
+
+            gsap.set(dotsFull.slice(1), { opacity: 0 });
+            gsap.set(dotsFull[0], { opacity: 1 });
+
+            const tlStages = gsap.timeline({
+                scrollTrigger: {
+                    trigger: ".stages",
+                    start: "top top",
+                    end: "bottom bottom",
+                    scrub: 1.5
+                }
+            });
+
+            wrappers.forEach((wrap, i) => {
+                if (i < wrappers.length - 1) {
+                    const nextWrap = wrappers[i + 1];
+
+                    const currentTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+                    const nextTexts = nextWrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+
+                    const stepLabelName = `step_${i}`;
+
+                    tlStages.set(nextWrap, { autoAlpha: 1 }, stepLabelName);
+
+                    // УХОД ТЕКУЩИХ: растворяются в белом свечении
+                    tlStages.to(currentTexts, {
+                        y: -40,
+                        opacity: 0,
+                        textShadow: GLOW,             // <-- "растворение в свете"
+                        duration: 1.2,
+                        stagger: 0.06,
+                        ease: "power2.inOut"
+                    }, stepLabelName);
+
+                    // ПОЯВЛЕНИЕ НОВЫХ: из белого свечения в фокус
+                    tlStages.fromTo(nextTexts,
+                        {
+                            y: 40,
+                            opacity: 0,
+                            textShadow: GLOW            // <-- стартуют со свечением
+                        },
+                        {
+                            y: 0,
+                            opacity: 1,
+                            textShadow: NO_GLOW,        // <-- свечение уходит, текст "проявляется"
+                            duration: 1.2,
+                            stagger: 0.06,
+                            ease: "power2.inOut"
+                        }, stepLabelName);
+
+                    tlStages.to(dotsFull[i], { opacity: 0, duration: 1, ease: "power2.inOut" }, stepLabelName);
+                    tlStages.to(dotsFull[i + 1], { opacity: 1, duration: 1, ease: "power2.inOut" }, stepLabelName);
+
+                    // ЛЕЙБЛ "ЭТАП" — более лёгкое свечение для маленького текста
+                    tlStages.to(stepLabel, {
+                        y: -15,
+                        opacity: 0,
+                        textShadow: GLOW_SMALL,
+                        duration: 0.5,
+                        ease: "power2.in"
+                    }, stepLabelName);
+
+                    tlStages.set(stepLabel, {
+                        textContent: `ЭТАП ${i + 2}`,
+                        y: 15,
+                        textShadow: GLOW_SMALL
+                    }, `${stepLabelName}+=0.5`);
+
+                    tlStages.to(stepLabel, {
+                        y: 0,
+                        opacity: 1,
+                        textShadow: NO_GLOW,
+                        duration: 0.5,
+                        ease: "power2.out"
+                    }, `${stepLabelName}+=0.5`);
+
+                    tlStages.set(wrap, { autoAlpha: 0 });
+                    tlStages.to({}, { duration: 0.5 });
+                }
+            });
+        }
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        // Инициализация Swiper (Карусель)
+        const teamSwiper = new Swiper('.swiper', {
+            slidesPerView: 'auto',    // Ширина слайдов определяется CSS
+            centeredSlides: true,     // Всегда держать активный слайд по центру
+            spaceBetween: 40,         // Расстояние между карточками (настрой под себя)
+            grabCursor: true,         // Иконка руки при наведении
+            slideToClickedSlide: true,// Клик по соседней карточке ставит её в центр
+            speed: 600,               // Плавность перелистывания
+            // Подключение твоих кнопок навигации, если они есть
+            // navigation: {
+            //   nextEl: '.team_nav-next',
+            //   prevEl: '.team_nav-prev',
+            // },
+        });
+
+        // Логика GSAP: Чтение данных с флешки на монитор при каждом свайпе
+        teamSwiper.on('slideChange', function () {
+
+            // 1. Находим текущий активный слайд
+            const activeSlide = teamSwiper.slides[teamSwiper.activeIndex];
+
+            // 2. Достаем новые тексты из скрытого блока
+            const newRole = activeSlide.querySelector('.hidden-role').innerText;
+            const newQuote = activeSlide.querySelector('.hidden-quote').innerText;
+
+            // 3. Находим "Мониторы" (куда будем вставлять текст)
+            // Вставь сюда точные классы твоих текстовых элементов из team_col-left и team_col-right
+            const roleMonitor = document.querySelector('.team_role-title');
+            const quoteMonitor = document.querySelector('.team_quote-text');
+
+            // 4. GSAP Таймлайн: барабанная смена текста
+            const tl = gsap.timeline();
+
+            // Уводим старый текст ВВЕРХ
+            tl.to([roleMonitor, quoteMonitor], {
+                y: -20,
+                opacity: 0,
+                duration: 0.3,
+                ease: "power2.in"
+            });
+
+            // Мгновенно подменяем текст (пока он невидим)
+            tl.call(() => {
+                if (roleMonitor) roleMonitor.innerText = newRole;
+                if (quoteMonitor) quoteMonitor.innerText = newQuote;
+            });
+
+            // Телепортируем текст ВНИЗ и выводим наверх в исходную позицию
+            tl.set([roleMonitor, quoteMonitor], { y: 20 });
+            tl.to([roleMonitor, quoteMonitor], {
+                y: 0,
+                opacity: 1,
+                duration: 0.4,
+                ease: "power2.out"
+            });
+        });
+
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof gsap === 'undefined') return;
+
+        const track = document.querySelector('.team_photo-track');
+        const slides = gsap.utils.toArray('.team_photo-slide');
+        const dividers = gsap.utils.toArray('.team_div');
+        const nextBtn = document.querySelector('.team_nav-btn');
+        const dots = gsap.utils.toArray('.team_dot');
+
+        if (!track || slides.length === 0) return;
+
+        const totalSlides = slides.length;
+        const ANIM_DURATION = 1.0;
+        const ANIM_EASE = "power2.inOut";
+
+        let isAnimating = false;
+
+        // ============================================
+        // 1. ЗАМЕРЯЕМ ИСХОДНУЮ ВЁРСТКУ WEBFLOW
+        // ============================================
+        let initialActiveIdx = 0;
+        slides.forEach((slide, i) => {
+            if (slide.classList.contains('is-active')) {
+                initialActiveIdx = i;
+            }
+        });
+
+        let activeIndex = initialActiveIdx;
+
+        const trackRect = track.getBoundingClientRect();
+        const trackCenterX = trackRect.left + trackRect.width / 2;
+        const trackBottom = trackRect.bottom;
+        const trackHeight = trackRect.height;
+
+        const vw = window.innerWidth / 100;
+        const toVw = px => px / vw;
+
+        const slotPositions = slides.map(slide => {
+            const rect = slide.getBoundingClientRect();
+            return {
+                x: toVw(rect.left + rect.width / 2 - trackCenterX),
+                bottom: toVw(trackBottom - rect.bottom),
+                w: toVw(rect.width),
+                h: toVw(rect.height)
+            };
+        });
+
+        const dividerPositions = dividers.map(div => {
+            const rect = div.getBoundingClientRect();
+            return {
+                x: toVw(rect.left + rect.width / 2 - trackCenterX),
+                bottom: toVw(trackBottom - rect.bottom)
+            };
+        });
+
+        const ACTIVE_W = slotPositions[initialActiveIdx].w;
+        const ACTIVE_H = slotPositions[initialActiveIdx].h;
+        const ACTIVE_BOTTOM = slotPositions[initialActiveIdx].bottom;
+
+        let SMALL_W, SMALL_H, SMALL_BOTTOM;
+        for (let i = 0; i < slotPositions.length; i++) {
+            if (i !== initialActiveIdx) {
+                SMALL_W = slotPositions[i].w;
+                SMALL_H = slotPositions[i].h;
+                SMALL_BOTTOM = slotPositions[i].bottom;
+                break;
+            }
+        }
+
+        // ============================================
+        // 2. ПЕРЕВОДИМ В ABSOLUTE
+        // ============================================
+        track.style.cssText += `
+    display: block !important;
+    position: relative !important;
+    height: ${toVw(trackHeight)}vw !important;
+    width: 100% !important;
+    overflow: visible !important;
+  `;
+
+        slides.forEach((slide, i) => {
+            slide.classList.remove('is-active');
+            const header = slide.querySelector('.team_member-header');
+            if (header) header.classList.remove('is-hidden');
+
+            const isActive = (i === initialActiveIdx);
+            const w = isActive ? ACTIVE_W : SMALL_W;
+            const h = isActive ? ACTIVE_H : SMALL_H;
+            const bottom = isActive ? ACTIVE_BOTTOM : SMALL_BOTTOM;
+
+            slide.style.cssText += `
+      position: absolute !important;
+      bottom: ${bottom}vw !important;
+      left: 50% !important;
+      width: ${w}vw !important;
+      height: ${h}vw !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      margin: 0 !important;
+      transition: none !important;
+    `;
+        });
+
+        gsap.set(slides, {
+            xPercent: -50,
+            yPercent: 0,
+            transformOrigin: "center bottom"
+        });
+
+        slides.forEach((slide, i) => {
+            gsap.set(slide, { x: `${slotPositions[i].x}vw` });
+            const header = slide.querySelector('.team_member-header');
+            if (header) {
+                gsap.set(header, { opacity: (i === initialActiveIdx) ? 1 : 0 });
+            }
+        });
+
+        dividers.forEach((div, i) => {
+            div.style.cssText += `
+      position: absolute !important;
+      bottom: ${dividerPositions[i].bottom}vw !important;
+      left: 50% !important;
+      margin: 0 !important;
+      transition: none !important;
+    `;
+        });
+
+        gsap.set(dividers, {
+            xPercent: -50,
+            yPercent: 0
+        });
+
+        dividers.forEach((div, i) => {
+            gsap.set(div, { x: `${dividerPositions[i].x}vw` });
+        });
+
+        // ============================================
+        // 3. ЛОГИКА КАРУСЕЛИ
+        // ============================================
+        function getPhysicalSlot(cardIndex) {
+            let diff = cardIndex - activeIndex;
+            if (diff > Math.floor(totalSlides / 2)) diff -= totalSlides;
+            if (diff < -Math.floor(totalSlides / 2)) diff += totalSlides;
+
+            let physicalIdx = initialActiveIdx + diff;
+            while (physicalIdx < 0) physicalIdx += totalSlides;
+            while (physicalIdx >= totalSlides) physicalIdx -= totalSlides;
+            return physicalIdx;
+        }
+
+        function getSlideState(cardIndex) {
+            const physicalSlot = getPhysicalSlot(cardIndex);
+            const isActiveSlot = (physicalSlot === initialActiveIdx);
+
+            return {
+                x: slotPositions[physicalSlot].x,
+                bottom: slotPositions[physicalSlot].bottom,
+                w: isActiveSlot ? ACTIVE_W : SMALL_W,
+                h: isActiveSlot ? ACTIVE_H : SMALL_H,
+                z: isActiveSlot ? 10 : 5,
+                headerOpacity: isActiveSlot ? 1 : 0
+            };
+        }
+
+        // ============================================
+        // 4. ОБНОВЛЕНИЕ КАРУСЕЛИ
+        // ============================================
+        function updateSlider(newIndex) {
+            if (isAnimating) return;
+            isAnimating = true;
+            activeIndex = newIndex;
+
+            const tl = gsap.timeline({
+                defaults: { duration: ANIM_DURATION, ease: ANIM_EASE },
+                onComplete: () => { isAnimating = false; }
+            });
+
+            slides.forEach((slide, i) => {
+                const state = getSlideState(i);
+
+                tl.to(slide, {
+                    x: `${state.x}vw`,
+                    bottom: `${state.bottom}vw`,
+                    width: `${state.w}vw`,
+                    height: `${state.h}vw`,
+                    zIndex: state.z
+                }, 0);
+
+                const header = slide.querySelector('.team_member-header');
+                if (header) {
+                    tl.to(header, {
+                        opacity: state.headerOpacity,
+                        duration: ANIM_DURATION * 0.5,
+                        ease: "power2.out"
+                    }, state.headerOpacity === 1 ? ANIM_DURATION * 0.5 : 0);
+                }
+            });
+
+            dots.forEach((dot, index) => {
+                const full = dot.querySelector('.team_dot-full');
+                if (full) {
+                    tl.to(full, {
+                        opacity: index === activeIndex ? 1 : 0,
+                        duration: 0.3
+                    }, 0);
+                }
+            });
+
+            updateTexts(slides[activeIndex], activeIndex + 1);
+        }
+
+        // ============================================
+        // 5. ТЕКСТЫ — МЯГКИЙ БЛЮР БЕЗ АРТЕФАКТОВ
+        // ============================================
+        function updateTexts(activeSlide, currentNum) {
+            const newRole = activeSlide.querySelector('.team_data-role')?.innerHTML || '';
+            const newQuote = activeSlide.querySelector('.team_data-quote')?.innerHTML || '';
+            const newDesc = activeSlide.querySelector('.team_data-description')?.innerHTML || '';
+            const newSignSrc = activeSlide.querySelector('.team_data-sign')?.getAttribute('src') || '';
+
+            const targetRole = document.querySelector('.team_role-text');
+            const targetQuote = document.querySelector('.team_quote-text');
+            const targetDesc = document.querySelector('.team_desc-text');
+            const targetSign = document.querySelector('.team-sign');
+
+            const numWrappers = document.querySelectorAll('.team_info-meta .label-wrapper');
+            let targetNum = null;
+            if (numWrappers.length > 1) {
+                targetNum = numWrappers[1].querySelectorAll('.label-text')[1];
+            }
+
+            const elements = [targetRole, targetQuote, targetDesc, targetSign, targetNum].filter(el => el);
+            if (elements.length === 0) return;
+
+            // Подготавливаем слои заранее — убирает "квадрат"
+            elements.forEach(el => {
+                el.style.willChange = "filter, transform, opacity";
+                el.style.backfaceVisibility = "hidden";
+            });
+
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    // Снимаем will-change после анимации, чтобы не нагружать GPU
+                    elements.forEach(el => {
+                        el.style.willChange = "auto";
+                    });
+                }
+            });
+
+            // Уход: лёгкий блюр + опускание + прозрачность
+            tl.to(elements, {
+                y: -10,
+                opacity: 0,
+                filter: "blur(6px)",       // <-- было 15px, стало 6px
+                duration: 0.4,
+                stagger: 0.04,
+                ease: "power2.in"
+            });
+
+            // Подмена контента
+            tl.call(() => {
+                if (targetRole) targetRole.innerHTML = newRole;
+                if (targetQuote) targetQuote.innerHTML = newQuote;
+                if (targetDesc) targetDesc.innerHTML = newDesc;
+                if (targetNum) targetNum.innerHTML = currentNum;
+                if (targetSign && newSignSrc) {
+                    targetSign.src = newSignSrc;
+                    targetSign.removeAttribute('srcset');
+                }
+            });
+
+            // Появление: из лёгкого блюра + снизу
+            tl.fromTo(elements,
+                {
+                    y: 10,
+                    opacity: 0,
+                    filter: "blur(6px)"      // <-- было 15px, стало 6px
+                },
+                {
+                    y: 0,
+                    opacity: 1,
+                    filter: "blur(0px)",
+                    duration: 0.6,
+                    stagger: 0.04,
+                    ease: "power2.out"
+                }
+            );
+        }
+
+        // ============================================
+        // 6. УПРАВЛЕНИЕ
+        // ============================================
+        function nextSlide() { updateSlider((activeIndex + 1) % totalSlides); }
+        function prevSlide() { updateSlider((activeIndex - 1 + totalSlides) % totalSlides); }
+
+        if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+
+        slides.forEach((slide, i) => {
+            slide.addEventListener('click', () => {
+                if (i !== activeIndex && !isAnimating) updateSlider(i);
+            });
+        });
+
+        dots.forEach((dot, i) => {
+            dot.addEventListener('click', () => {
+                if (i !== activeIndex && !isAnimating && i < totalSlides) updateSlider(i);
+            });
+        });
+
+        let startX = 0;
+        let isDragging = false;
+
+        track.addEventListener('mousedown', (e) => {
+            startX = e.clientX;
+            isDragging = true;
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const diff = startX - e.clientX;
+            if (diff > 50) nextSlide();
+            if (diff < -50) prevSlide();
+        });
+
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            const diff = startX - e.changedTouches[0].clientX;
+            if (diff > 40) nextSlide();
+            if (diff < -40) prevSlide();
+        });
+    });
+</script>

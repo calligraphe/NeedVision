@@ -1,0 +1,81 @@
+/* ============================================================
+   NEED.VISION — Кастомные стили, связанные со скриптами
+   ============================================================
+   Эти стили нужны, чтобы некоторые скрипты корректно отрисовали
+   свои эффекты. Можно либо:
+     - оставить их в Webflow Head Code как <style>,
+     - либо подключить файлом через CDN (см. README).
+   ============================================================ */
+
+
+/* ---- 1. Размытая «корочка» под навигацией ---- */
+.nav-blur-bg {
+  /* Деликатное размытие */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  /* Плавная маска с промежуточными шагами */
+  -webkit-mask-image: linear-gradient(to bottom,
+      black 0%,
+      black 60%,                     /* Полное размытие до 60% высоты */
+      rgba(0, 0, 0, 0.6) 80%,
+      rgba(0, 0, 0, 0.2) 92%,
+      transparent 100%               /* Полное исчезновение в самом конце */
+  );
+  mask-image: linear-gradient(to bottom,
+      black 0%,
+      black 60%,
+      rgba(0, 0, 0, 0.6) 80%,
+      rgba(0, 0, 0, 0.2) 92%,
+      transparent 100%);
+}
+
+
+/* ---- 2. Эффект «фонарика» в секции partner ---- */
+/* Используется скриптом sections/partner-spotlight.js — он двигает
+   CSS-переменные --mouse-x / --mouse-y. */
+.spotlight-overlay {
+  pointer-events: none;
+
+  /* Дефолтная позиция (по центру) */
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+
+  /* РАЗМЕР ФОНАРИКА */
+  --spotlight-size: 50vw;
+
+  /* Градиент */
+  background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
+      rgba(0, 0, 0, 0) 0%,           /* Центр — прозрачный */
+      rgba(0, 0, 0, 0.85) 45%,       /* Полутень */
+      rgba(0, 0, 0, 1) 75%           /* Темнота */
+  );
+}
+
+
+/* ---- 3. Размеры карточек в Swiper-версии team-слайдера ---- */
+/* Используется со sliders/team-slider-swiper.js. Если активна
+   кастомная версия (sliders/team-slider.js), этот блок не нужен. */
+.swiper-slide {
+  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  /* Если в Webflow слетят размеры — жёстко фиксируются здесь */
+  width: 6vw !important;
+  height: 8vw !important;
+  opacity: 0.6;
+}
+
+.swiper-slide.swiper-slide-active {
+  width: 22vw !important;
+  height: 32vw !important;
+  opacity: 1;
+}
+
+/* Прячем имя у неактивных карточек */
+.swiper-slide .team_member-name {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.swiper-slide.swiper-slide-active .team_member-name {
+  opacity: 1;
+}

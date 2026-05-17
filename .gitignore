@@ -1,10 +1,14 @@
-# Webflow-выгрузка не нужна в репо — она огромная и пересоздаётся в Webflow
-need-vision-v2.webflow/
-
-# Локальные служебные файлы
+# macOS
 .DS_Store
-all-code.html
-patches/
+.AppleDouble
+.LSOverride
 
-# Памятки/заметки, если будут
-*.local.md
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Local
+*.local
