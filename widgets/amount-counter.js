@@ -1,24 +1,21 @@
 /**
- * NEED.VISION — Бесконечный счётчик суммы (Odometer)
- * ==================================================
+ * NEED.VISION — Синхронный счётчик суммы (Odometer)
+ * =================================================
  *
  * Что делает: рендерит барабан-счётчик с разделителем-пробелом
- *             (например, `400 800 400`) и каждые 15–20 секунд
- *             прибавляет +15 — даёт ощущение «живых» поступлений.
+ *             (например, `400 800 400`) на ВСЕХ совпадающих элементах
+ *             в DOM сразу. Каждые 15–20 секунд прибавляет +15.
  *
- *             Скрипт находит ВСЕ совпадения сразу:
- *               - `.amount-counter`        — счётчик в навигации
- *               - `.menu_amount-counter`   — счётчик в раскрывающемся меню
- *
- *             У каждого свой Odometer-экземпляр и свой таймер —
- *             числа на двух счётчиках будут близкими, но не точно
- *             синхронными (одновременно их обычно не видно).
+ *             Принципиально: один общий `currentAmount` и один таймер
+ *             на ВСЕ счётчики. Все Odometer-инстансы обновляются
+ *             одинаковым числом — даже если в DOM 3+ элементов с этим
+ *             классом (например, дубль в навигации + меню + где-то ещё),
+ *             они будут показывать одно и то же значение.
  *
  *             Если элемент скрыт на момент DOMContentLoaded (например,
- *             меню свёрнуто), Odometer не инициализируется сразу.
- *             Через `ResizeObserver` ждём, когда элемент получит
- *             ширину, и только потом запускаем — иначе Odometer
- *             может неправильно посчитать макет.
+ *             меню свёрнуто) — его Odometer создаётся позже, через
+ *             ResizeObserver, когда элемент получает ширину, и
+ *             синхронизируется с уже работающим счётчиком.
  *
  * Зависимости:
  *   - Odometer.js 0.4.7
@@ -30,28 +27,31 @@
  *   - .menu_amount-counter   — счётчик в раскрывающемся меню
  *
  * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/widgets/amount-counter.js"></script>
+ *   <script src="https://needvision.aoxuaio.workers.dev/widgets/amount-counter.js"></script>
  */
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ---- Проверка зависимостей ----
+function bootAmountCounter() {
+  // ---- Проверка зависимости ----
   if (typeof Odometer === "undefined") {
     console.warn("[Need Vision] amount-counter.js: Odometer не загружен");
     return;
   }
 
-  // ---- Проверка наличия элементов ----
+  // ---- Поиск всех счётчиков ----
   const counterElements = document.querySelectorAll('.amount-counter, .menu_amount-counter');
-  console.log(`[Need Vision] amount-counter.js: найдено счётчиков — ${counterElements.length}`);
   if (counterElements.length === 0) return;
 
-  // ---- Тайминги и константы ----
+  // ---- Константы ----
   const START_AMOUNT = 400800400;
   const INCREMENT = 15;
   const MIN_INTERVAL_MS = 15000;
   const MAX_INTERVAL_MS = 20000;
 
-  // ---- CSS-фикс (один раз для всех счётчиков) ----
+  // ---- Глобальное состояние (одно на всех) ----
+  let currentAmount = START_AMOUNT;
+  const odometers = [];
+
+  // ---- CSS-фикс (один раз) ----
   // Принудительный пробел между разрядами + наследование шрифта Webflow.
   const style = document.createElement('style');
   style.innerHTML = `
@@ -67,48 +67,56 @@ document.addEventListener("DOMContentLoaded", () => {
   `;
   document.head.appendChild(style);
 
-  // ---- Инициализация Odometer на одном элементе ----
-  function initCounter(counterElement) {
-    let currentAmount = START_AMOUNT;
-
+  // ---- Создаём Odometer на элементе и регистрируем его в общем пуле ----
+  function attachOdometer(el) {
     const od = new Odometer({
-      el: counterElement,
+      el: el,
       value: currentAmount,
-      format: ' ddd', // формат с пробелом перед разрядами
+      format: ' ddd',
       theme: 'minimal'
     });
-
-    function updateCounter() {
-      currentAmount += INCREMENT;
+    // Если основной таймер уже что-то накапал — догоняем
+    if (currentAmount !== START_AMOUNT) {
       od.update(currentAmount);
-
-      const nextInterval = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
-      setTimeout(updateCounter, nextInterval);
     }
-
-    const initialInterval = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
-    setTimeout(updateCounter, initialInterval);
+    odometers.push(od);
   }
 
-  // ---- Запускаем счётчик на каждом элементе (с отложкой, если скрыт) ----
-  counterElements.forEach(counterElement => {
-    if (counterElement.offsetWidth > 0) {
-      initCounter(counterElement);
+  // ---- Запускаем Odometer на каждом элементе (с отложкой для скрытых) ----
+  counterElements.forEach(el => {
+    if (el.offsetWidth > 0) {
+      attachOdometer(el);
       return;
     }
-
-    // Элемент пока невидим (свёрнутое меню) — ждём, когда получит ширину
+    // Элемент пока невидим (свёрнутое меню) — ждём ширину
     if (typeof ResizeObserver !== "undefined") {
       const ro = new ResizeObserver(entries => {
         if (entries[0].contentRect.width > 0) {
           ro.disconnect();
-          initCounter(counterElement);
+          attachOdometer(el);
         }
       });
-      ro.observe(counterElement);
+      ro.observe(el);
     } else {
-      // Старые браузеры — стартуем как есть
-      initCounter(counterElement);
+      attachOdometer(el);
     }
   });
-});
+
+  // ---- Один общий таймер для всех ----
+  function tick() {
+    currentAmount += INCREMENT;
+    odometers.forEach(od => od.update(currentAmount));
+    const next = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
+    setTimeout(tick, next);
+  }
+
+  const firstInterval = Math.floor(Math.random() * (MAX_INTERVAL_MS - MIN_INTERVAL_MS + 1)) + MIN_INTERVAL_MS;
+  setTimeout(tick, firstInterval);
+}
+
+// ---- Универсальный запуск (работает в любом порядке загрузки скрипта) ----
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootAmountCounter);
+} else {
+  bootAmountCounter();
+}
