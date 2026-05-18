@@ -166,6 +166,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Стартовое состояние пагинации: активная точка горит, остальные — нет.
+  // Без этого Webflow держит все .team_dot-full скрытыми до первого клика.
+  dots.forEach((dot, i) => {
+    const full = dot.querySelector('.team_dot-full');
+    if (full) {
+      gsap.set(full, { opacity: i === activeIndex ? 1 : 0 });
+    }
+  });
+
   dividers.forEach((div, i) => {
     div.style.cssText += `
       position: absolute !important;
