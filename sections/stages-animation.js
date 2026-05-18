@@ -39,7 +39,7 @@
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sections/stages-animation.js"></script>
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootStagesAnimation() {
   // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
     console.warn("[Need Vision] stages-animation.js: GSAP не загружен");
@@ -157,50 +157,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Обеспечиваем видимость контейнера пагинации (в Webflow .stages_pagination
-    // может стартовать с opacity: 0 — тогда никакая точка не видна до взаимодействия).
+    // Обеспечиваем видимость контейнера пагинации.
     const stagesPagination = document.querySelector(".stages_pagination");
 
     // У каждой точки в Webflow висит data-w-id и On-Page-Load IX2-анимация,
-    // которая сбрасывает opacity ПОСЛЕ нашего DOMContentLoaded. Чтобы наше
-    // стартовое состояние пережило это, используем setProperty с !important
-    // (inline-стиль с !important побеждает любой IX2-инлайн) и повторно
-    // применяем состояние в очереди Webflow.push() — она выполняется ПОСЛЕ
-    // инициализации IX2.
-    function applyDotInitialState() {
-      if (stagesPagination) {
-        stagesPagination.style.setProperty("opacity", "1", "important");
-      }
-      // Активная точка (индекс 0): full=1, empty=0; остальные — наоборот.
-      dotsFull.forEach((dot, i) => {
-        dot.style.setProperty("opacity", i === 0 ? "1" : "0", "important");
-      });
-      dotsEmpty.forEach((dot, i) => {
-        dot.style.setProperty("opacity", i === 0 ? "0" : "1", "important");
-      });
+    // которая может сбрасывать opacity ПОСЛЕ нашего скрипта. Самый чистый
+    // способ — отвязать IX2 от этих элементов: убираем data-w-id, и Webflow
+    // больше не сможет их трогать. Тогда наш GSAP — единственный хозяин opacity.
+    const pagDots = [...dotsFull, ...dotsEmpty];
+    if (stagesPagination) pagDots.push(stagesPagination);
+    pagDots.forEach(el => el.removeAttribute("data-w-id"));
+
+    if (stagesPagination) {
+      gsap.set(stagesPagination, { opacity: 1 });
     }
-
-    applyDotInitialState();
-
-    if (window.Webflow && typeof window.Webflow.push === "function") {
-      window.Webflow.push(applyDotInitialState);
-    }
-
-    // Снимаем !important перед стартом scrub-анимации — иначе она не сможет
-    // менять opacity точек. Делаем это после двух кадров, к этому моменту
-    // Webflow IX2 уже отработал на этих элементах.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      [...dotsFull, ...dotsEmpty].forEach((dot) => {
-        const cur = dot.style.opacity;
-        dot.style.removeProperty("opacity");
-        dot.style.opacity = cur;
-      });
-      if (stagesPagination) {
-        const cur = stagesPagination.style.opacity;
-        stagesPagination.style.removeProperty("opacity");
-        stagesPagination.style.opacity = cur;
-      }
-    }));
+    // Активная точка (индекс 0): full=1, empty=0; остальные — наоборот.
+    if (dotsFull[0]) gsap.set(dotsFull[0], { opacity: 1 });
+    if (dotsFull.length > 1) gsap.set(dotsFull.slice(1), { opacity: 0 });
+    if (dotsEmpty[0]) gsap.set(dotsEmpty[0], { opacity: 0 });
+    if (dotsEmpty.length > 1) gsap.set(dotsEmpty.slice(1), { opacity: 1 });
 
     const tlStages = gsap.timeline({
       scrollTrigger: {
@@ -294,4 +269,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-});
+}
+
+// Универсальный запуск: если DOM ещё парсится — ждём, иначе стартуем сразу.
+// Это покрывает случай, когда Cloudflare отдаёт скрипт уже после DOMContentLoaded.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootStagesAnimation);
+} else {
+  bootStagesAnimation();
+}
