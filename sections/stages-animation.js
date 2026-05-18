@@ -30,7 +30,10 @@
  *   - .stages_subtitle       — подзаголовок этапа
  *   - .stages_p-text         — параграф этапа
  *   - .stages_step-label     — лейбл «ЭТАП N» (текст подменяется)
- *   - .stages_dot-full       — заполнители точек-индикаторов
+ *   - .stages_pagination     — контейнер точек (обеспечиваем opacity:1)
+ *   - .stages_dot            — обёртка одной точки (внутри empty + full)
+ *   - .stages_dot-empty      — пустая иконка (видна на НЕактивных)
+ *   - .stages_dot-full       — заполненная иконка (видна на активной)
  *
  * Подключение:
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sections/stages-animation.js"></script>
@@ -111,6 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   const wrappers = gsap.utils.toArray(".stages_text-wrapper");
   const dotsFull = gsap.utils.toArray(".stages_dot-full");
+  const dotsEmpty = gsap.utils.toArray(".stages_dot-empty");
   const stepLabel = document.querySelector(".stages_step-label");
 
   // Состояния «тумана» — белое свечение через text-shadow.
@@ -167,8 +171,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (stagesPagination) {
         stagesPagination.style.setProperty("opacity", "1", "important");
       }
+      // Активная точка (индекс 0): full=1, empty=0; остальные — наоборот.
       dotsFull.forEach((dot, i) => {
         dot.style.setProperty("opacity", i === 0 ? "1" : "0", "important");
+      });
+      dotsEmpty.forEach((dot, i) => {
+        dot.style.setProperty("opacity", i === 0 ? "0" : "1", "important");
       });
     }
 
@@ -182,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // менять opacity точек. Делаем это после двух кадров, к этому моменту
     // Webflow IX2 уже отработал на этих элементах.
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      dotsFull.forEach((dot) => {
+      [...dotsFull, ...dotsEmpty].forEach((dot) => {
         const cur = dot.style.opacity;
         dot.style.removeProperty("opacity");
         dot.style.opacity = cur;
@@ -207,6 +215,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // ScrollTrigger'а иначе может ре-инициализировать tween'ы и сбить inline opacity.
     if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1 }, 0);
     if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0 }, 0);
+    if (dotsEmpty[0]) tlStages.set(dotsEmpty[0], { opacity: 0 }, 0);
+    if (dotsEmpty.length > 1) tlStages.set(dotsEmpty.slice(1), { opacity: 1 }, 0);
 
     wrappers.forEach((wrap, i) => {
       if (i < wrappers.length - 1) {
@@ -245,8 +255,16 @@ document.addEventListener("DOMContentLoaded", () => {
             ease: "power2.inOut"
           }, stepLabelName);
 
+        // Прошлая точка: full гаснет, empty проявляется.
         tlStages.to(dotsFull[i], { opacity: 0, duration: 1, ease: "power2.inOut" }, stepLabelName);
+        if (dotsEmpty[i]) {
+          tlStages.to(dotsEmpty[i], { opacity: 1, duration: 1, ease: "power2.inOut" }, stepLabelName);
+        }
+        // Новая точка: full проявляется, empty гаснет.
         tlStages.to(dotsFull[i + 1], { opacity: 1, duration: 1, ease: "power2.inOut" }, stepLabelName);
+        if (dotsEmpty[i + 1]) {
+          tlStages.to(dotsEmpty[i + 1], { opacity: 0, duration: 1, ease: "power2.inOut" }, stepLabelName);
+        }
 
         // ЛЕЙБЛ «ЭТАП N» — более лёгкое свечение для мелкого текста
         tlStages.to(stepLabel, {
