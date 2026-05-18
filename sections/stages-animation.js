@@ -153,6 +153,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // Обеспечиваем видимость контейнера пагинации (в Webflow .stages_pagination
+    // может стартовать с opacity: 0 — тогда никакая точка не видна до взаимодействия).
+    const stagesPagination = document.querySelector(".stages_pagination");
+    if (stagesPagination) {
+      gsap.set(stagesPagination, { opacity: 1 });
+    }
+
     gsap.set(dotsFull.slice(1), { opacity: 0 });
     gsap.set(dotsFull[0], { opacity: 1 });
 
@@ -164,6 +171,11 @@ document.addEventListener("DOMContentLoaded", () => {
         scrub: 1.5
       }
     });
+
+    // Дублируем стартовое состояние ВНУТРИ таймлайна — scrub-рефреш
+    // ScrollTrigger'а иначе может ре-инициализировать tween'ы и сбить inline opacity.
+    if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1 }, 0);
+    if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0 }, 0);
 
     wrappers.forEach((wrap, i) => {
       if (i < wrappers.length - 1) {
