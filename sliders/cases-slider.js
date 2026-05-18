@@ -69,10 +69,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const SLIDE_STEP_VW = 28;            // шаг сдвига дорожки на один слайд
   const TRACK_DURATION = 0.8;          // длительность сдвига дорожки
   const CONTENT_DURATION = 0.4;        // длительность смены цветов карточки
+  const HOVER_DURATION = 0.25;         // длительность hover-перекраски неактивной карточки
   const BG_DURATION = 0.8;             // длительность фоновой подложки
   const DOT_DURATION = 0.4;            // длительность анимации точки
   const DRAG_MIN = 10;                 // минимум движения для drag
   const DRAG_TOLERANCE = 20;
+
+  // Цвета hover-состояния неактивной карточки
+  const HOVER_BG = "#8F8E84";
+  const HOVER_COLOR = "#ffffff";
+  const IDLE_BG = "#ffffff";
+  const IDLE_COLOR = "#000000";
 
   let activeIndex = 0;
   const totalSlides = slides.length;
@@ -184,8 +191,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         // Неактивная карточка — на белом фоне
         gsap.to(content, {
-          backgroundColor: "#ffffff",
-          color: "#000000",
+          backgroundColor: IDLE_BG,
+          color: IDLE_COLOR,
           duration: CONTENT_DURATION
         });
         if (tag) tag.classList.remove('active');
@@ -243,6 +250,30 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     });
+
+    // Hover для НЕактивной карточки: фон #8F8E84, текст белый.
+    // На активной карточке игнорируем — у неё свой стиль (transparent + белый).
+    const content = slide.querySelector('.case_card-content');
+    if (content) {
+      slide.addEventListener('mouseenter', () => {
+        if (i === activeIndex) return;
+        gsap.to(content, {
+          backgroundColor: HOVER_BG,
+          color: HOVER_COLOR,
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+      });
+      slide.addEventListener('mouseleave', () => {
+        if (i === activeIndex) return;
+        gsap.to(content, {
+          backgroundColor: IDLE_BG,
+          color: IDLE_COLOR,
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+      });
+    }
   });
 
   // ==========================================
