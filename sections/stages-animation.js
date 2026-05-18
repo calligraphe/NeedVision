@@ -156,12 +156,43 @@ document.addEventListener("DOMContentLoaded", () => {
     // Обеспечиваем видимость контейнера пагинации (в Webflow .stages_pagination
     // может стартовать с opacity: 0 — тогда никакая точка не видна до взаимодействия).
     const stagesPagination = document.querySelector(".stages_pagination");
-    if (stagesPagination) {
-      gsap.set(stagesPagination, { opacity: 1 });
+
+    // У каждой точки в Webflow висит data-w-id и On-Page-Load IX2-анимация,
+    // которая сбрасывает opacity ПОСЛЕ нашего DOMContentLoaded. Чтобы наше
+    // стартовое состояние пережило это, используем setProperty с !important
+    // (inline-стиль с !important побеждает любой IX2-инлайн) и повторно
+    // применяем состояние в очереди Webflow.push() — она выполняется ПОСЛЕ
+    // инициализации IX2.
+    function applyDotInitialState() {
+      if (stagesPagination) {
+        stagesPagination.style.setProperty("opacity", "1", "important");
+      }
+      dotsFull.forEach((dot, i) => {
+        dot.style.setProperty("opacity", i === 0 ? "1" : "0", "important");
+      });
     }
 
-    gsap.set(dotsFull.slice(1), { opacity: 0 });
-    gsap.set(dotsFull[0], { opacity: 1 });
+    applyDotInitialState();
+
+    if (window.Webflow && typeof window.Webflow.push === "function") {
+      window.Webflow.push(applyDotInitialState);
+    }
+
+    // Снимаем !important перед стартом scrub-анимации — иначе она не сможет
+    // менять opacity точек. Делаем это после двух кадров, к этому моменту
+    // Webflow IX2 уже отработал на этих элементах.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      dotsFull.forEach((dot) => {
+        const cur = dot.style.opacity;
+        dot.style.removeProperty("opacity");
+        dot.style.opacity = cur;
+      });
+      if (stagesPagination) {
+        const cur = stagesPagination.style.opacity;
+        stagesPagination.style.removeProperty("opacity");
+        stagesPagination.style.opacity = cur;
+      }
+    }));
 
     const tlStages = gsap.timeline({
       scrollTrigger: {
