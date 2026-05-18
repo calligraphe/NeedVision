@@ -26,6 +26,7 @@
  *   - .nav-left                — левая колонка нав-бара (сжимает gap)
  *   - .nav_right               — правая колонка нав-бара (сжимает gap)
  *   - .nav_lleft-wrapper       — внутренний враппер (сжимает gap)
+ *   - .nav_left-inner          — внутренний враппер левой колонки (сжимает gap 2vw → 0)
  *   - .nav-logo_img            — лого (меняет ширину и top)
  *   - .nav-icon                — иконки (инвертируются)
  *   - .nav-btm, .nav-btm *     — нижняя строка (инверсия над .stages)
@@ -158,6 +159,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 0)
 
     .to(".nav_lleft-wrapper", {
+      gap: "0vw",
+      duration: 0.4
+    }, 0)
+
+    .to(".nav_left-inner", {
       gap: "0vw",
       duration: 0.4
     }, 0)
