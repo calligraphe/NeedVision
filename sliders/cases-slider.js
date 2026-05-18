@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const SLIDE_STEP_VW = 28;            // шаг сдвига дорожки на один слайд
   const TRACK_DURATION = 0.8;          // длительность сдвига дорожки
   const CONTENT_DURATION = 0.4;        // длительность смены цветов карточки
-  const HOVER_DURATION = 0.25;         // длительность hover-перекраски неактивной карточки
+  const HOVER_DURATION = 0.6;          // длительность hover-перекраски неактивной карточки
   const BG_DURATION = 0.8;             // длительность фоновой подложки
   const DOT_DURATION = 0.4;            // длительность анимации точки
   const DRAG_MIN = 10;                 // минимум движения для drag
@@ -251,9 +251,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Hover для НЕактивной карточки: фон #8F8E84, текст белый.
+    // Hover для НЕактивной карточки: фон #8F8E84, текст белый, лого инвертируется.
     // На активной карточке игнорируем — у неё свой стиль (transparent + белый).
     const content = slide.querySelector('.case_card-content');
+    const hoverLogo = slide.querySelector('.case_client-logo');
     if (content) {
       slide.addEventListener('mouseenter', () => {
         if (i === activeIndex) return;
@@ -263,6 +264,13 @@ document.addEventListener("DOMContentLoaded", () => {
           duration: HOVER_DURATION,
           ease: "power2.out"
         });
+        if (hoverLogo) {
+          gsap.to(hoverLogo, {
+            filter: "brightness(0) invert(1)",
+            duration: HOVER_DURATION,
+            ease: "power2.out"
+          });
+        }
       });
       slide.addEventListener('mouseleave', () => {
         if (i === activeIndex) return;
@@ -272,6 +280,13 @@ document.addEventListener("DOMContentLoaded", () => {
           duration: HOVER_DURATION,
           ease: "power2.out"
         });
+        if (hoverLogo) {
+          gsap.to(hoverLogo, {
+            filter: "brightness(0) invert(0)",
+            duration: HOVER_DURATION,
+            ease: "power2.out"
+          });
+        }
       });
     }
   });
