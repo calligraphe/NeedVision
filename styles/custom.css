@@ -130,8 +130,8 @@
    ±40° (вместо стандартных ±45°) даёт чуть более «узкий» крестик —
    ближе к пропорциям исходной X-иконки. */
 .menu-icon.is-open .menu-icon__bar--top {
-  transform: translateY(0.165vw) rotate(40deg);
+  transform: translateY(0.165vw) rotate(30deg);
 }
 .menu-icon.is-open .menu-icon__bar--bot {
-  transform: translateY(-0.165vw) rotate(-40deg);
+  transform: translateY(-0.165vw) rotate(-30deg);
 }
