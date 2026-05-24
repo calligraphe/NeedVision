@@ -161,11 +161,12 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
+  // Иконки/таймер — плавный fade-out в первые ~100px скролла (≈0.125
+  // прогресса от полного таймлайна 1.1s). Размеры не схлопываем — это
+  // вызывало «дёргание». Просто уходим в прозрачность.
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
-    width: 0,
-    height: 0,
     opacity: 0,
-    duration: 0.4,
+    duration: 0.15,
     ease: "power2.out"
   }, 0);
 
