@@ -2,45 +2,42 @@
  * NEED.VISION — Анимация навигации при скролле + клик-меню
  * ========================================================
  *
- * Что делает: при скролле страницы сжимает верхнюю навигацию в компактную
- *             белую плашку, показывает PROFIT-счётчик, инвертирует цвета
- *             над тёмной секцией `.stages`, плюс открывает/закрывает
- *             выпадающее меню (кнопка `.nav-menu` ↔ панель `.menu_overlay-content`).
+ * Что делает: при скролле страницы плавно сжимает плашку меню
+ *             `.menu_overlay-content` (57vw → 28vw), красит
+ *             `.menu_control-bar` в белый с чёрным текстом, раскрывает
+ *             PROFIT-счётчик и сжимает логотип в `.nav-btm`. Над тёмной
+ *             секцией `.stages` делает повторную инверсию цветов.
+ *             Клик по `.nav-menu` — экстренно переводит верх в «сжатое»
+ *             состояние и раскрывает `.menu_dropdown-list` (height 0 → auto).
  *
  * Зависимости:
  *   - GSAP 3.12.x
  *   - ScrollTrigger
  *
  * Webflow селекторы:
- *   - .container__1440px       — внешний контейнер навигации
- *   - .container__1440px *     — все потомки (меняют цвет текста)
- *   - .case__link              — ссылка-кейс в навигации
+ *   - .menu_overlay-content    — плашка меню (57vw → 28vw на скролле)
+ *   - .menu_control-bar        — верхняя пилюля (бел. фон, чёрный текст)
+ *   - .menu_dropdown-list      — выпадающая часть (height 0 ↔ auto)
+ *   - .menu_profit-badge       — обёртка PROFIT-счётчика (раскрывается)
+ *   - .nav-profit-item         — пункты PROFIT-счётчика (стаггер вверх)
  *   - .nav-menu                — кнопка-триггер меню
- *   - .nav-menu__txt           — подпись кнопки меню (MENU ↔ CLOSE)
- *   - .nav-menu__img           — иконка кнопки меню (поворот на 45°)
- *   - .nav-profit              — обёртка PROFIT-счётчика (раскрывается)
- *   - .nav-profit-item         — пункты PROFIT-счётчика
+ *   - .nav-menu__txt           — подпись кнопки (Menu ↔ Close)
+ *   - .nav-menu__img           — иконка кнопки (поворот 45°)
  *   - .nav_left-icon           — левая иконка нав-бара (скрывается)
  *   - .nav_right-icon          — правая иконка нав-бара (скрывается)
  *   - .nav-timer               — таймер (скрывается)
- *   - .nav-left                — левая колонка нав-бара (сжимает gap)
- *   - .nav_right               — правая колонка нав-бара (сжимает gap)
- *   - .nav_lleft-wrapper       — внутренний враппер (сжимает gap)
- *   - .nav_left-inner          — внутренний враппер левой колонки (сжимает gap 2vw → 0)
- *   - .nav-logo_img            — лого (меняет ширину и top)
+ *   - .nav-logo_img            — лого в `.nav-btm` (ширина и top)
  *   - .nav-icon                — иконки (инвертируются)
  *   - .nav-btm, .nav-btm *     — нижняя строка (инверсия над .stages)
- *   - .menu_overlay-content    — выпадающая панель меню
- *   - .menu_close-trigger      — закрывающий триггер внутри меню
  *   - .menu_backdrop           — затемняющая подложка под меню
  *   - .nav_menu-link           — ссылки внутри меню (клик закрывает)
- *   - .stages                  — тёмная секция (триггер инверсии)
+ *   - .stages                  — бежевая секция (триггер инверсии)
  *
  * Подключение:
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/nav-scroll.js"></script>
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootNavScroll() {
   // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
     console.warn("[Need Vision] nav-scroll.js: GSAP не загружен");
@@ -51,9 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ---- Проверка наличия навигации ----
-  const navContainer = document.querySelector(".container__1440px");
-  if (!navContainer) return;
+  // ---- Проверка наличия меню ----
+  const overlay = document.querySelector(".menu_overlay-content");
+  if (!overlay) return;
 
   gsap.registerPlugin(ScrollTrigger);
 
@@ -61,8 +58,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // 1. ПРЕДУСТАНОВКА
   // ==========================================
 
-  // PROFIT-счётчик изначально скрыт
-  gsap.set(".nav-profit", {
+  // PROFIT-счётчик скрыт по умолчанию (раскроется на скролле/открытии меню).
+  gsap.set(".menu_profit-badge", {
     opacity: 0,
     width: 0,
     overflow: "hidden",
@@ -71,145 +68,113 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.set(".nav-profit-item", {
     opacity: 0,
-    y: 10
+    y: 20
   });
 
-  // Меню изначально схлопнуто
-  gsap.set(".menu_overlay-content", {
+  // Дропдаун меню схлопнут.
+  gsap.set(".menu_dropdown-list", {
     height: 0,
     opacity: 0
   });
 
-  // Backdrop изначально невидим и не кликабелен
+  // Backdrop невидим и не кликабелен.
   gsap.set(".menu_backdrop", {
     opacity: 0,
     pointerEvents: "none"
   });
 
+  // У control-bar в CSS нет явного bg — задаём прозрачно-белый, чтобы
+  // дальнейший tween в #ffffff корректно интерполировал альфу.
+  gsap.set(".menu_control-bar", {
+    backgroundColor: "rgba(255,255,255,0)"
+  });
+
 
   // ==========================================
-  // 2. ОСНОВНОЙ ТАЙМЛАЙН СКРОЛЛА
+  // 2. ТАЙМЛАЙН СЖАТИЯ (paused — управляется снаружи)
   // ==========================================
-  const tl = gsap.timeline({
+  // Один таймлайн обслуживает оба источника:
+  //   - скролл двигает progress через proxy + scrub,
+  //   - клик по меню «экстренно» форсит progress в 1.
+  const compressTl = gsap.timeline({ paused: true });
+
+  compressTl.to(".menu_overlay-content", {
+    width: "28vw",
+    duration: 0.4
+  }, 0);
+
+  compressTl.to(".menu_control-bar", {
+    backgroundColor: "#ffffff",
+    duration: 0.4
+  }, 0);
+
+  compressTl.to(".menu_control-bar *", {
+    color: "#000000",
+    duration: 0.4
+  }, 0);
+
+  compressTl.to(".menu_profit-badge", {
+    width: "auto",
+    opacity: 1,
+    margin: "0 0.5vw",
+    duration: 0.4
+  }, 0);
+
+  compressTl.to(".nav-profit-item", {
+    opacity: 1,
+    y: 0,
+    duration: 1,
+    stagger: 0.15,
+    ease: "power2.out"
+  }, 0);
+
+  compressTl.to(".nav-logo_img", {
+    width: "62%",
+    top: "4vw",
+    duration: 0.5,
+    ease: "power2.out"
+  }, 0);
+
+  compressTl.to(".nav-icon", {
+    filter: "invert(1)",
+    duration: 0.4
+  }, 0);
+
+  compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
+    width: 0,
+    height: 0,
+    opacity: 0,
+    duration: 0.4
+  }, 0);
+
+
+  // ==========================================
+  // 3. СКРОЛЛ-ДРАЙВЕР: proxy.progress → compressTl
+  // ==========================================
+  // Скролл тянет proxy через scrub:1 → плавно, без «лесенки». Когда меню
+  // открыто — игнорируем входящие апдейты, чтобы не перебивать клик-анимацию.
+  const compressState = { progress: 0 };
+  let menuOpen = false;
+
+  gsap.to(compressState, {
+    progress: 1,
+    ease: "none",
     scrollTrigger: {
       trigger: "body",
       start: "top top",
       end: "+=800",
-      scrub: 1,
+      scrub: 1
+    },
+    onUpdate: () => {
+      if (!menuOpen) {
+        compressTl.progress(compressState.progress);
+      }
     }
   });
 
 
   // ==========================================
-  // 3. КОНТЕЙНЕР ПРЕВРАЩАЕТСЯ В ПЛАШКУ
-  // ==========================================
-  tl.to(".container__1440px", {
-    maxWidth: "28vw",
-    backgroundColor: "#ffffff",
-    borderRadius: "1.5vw",
-    paddingTop: "0.5vw",
-    paddingBottom: "0.5vw",
-    paddingLeft: "1vw",
-    paddingRight: "1vw",
-    margin: "0.7vw auto 0 auto",
-    duration: 0.4
-  }, 0)
-
-    .to(".container__1440px *", {
-      color: "#000000",
-      duration: 0.4
-    }, 0)
-
-    .to(".case__link, .nav-menu, .nav-menu__txt, .nav-profit, .nav-profit-item", {
-      fontSize: "0.7vw",
-      duration: 0.4
-    }, 0)
-
-
-    // ==========================================
-    // 4. ИСЧЕЗАЮЩИЕ ЭЛЕМЕНТЫ
-    // ==========================================
-    .to(".nav_left-icon", {
-      width: 0, height: 0, opacity: 0,
-      duration: 0.4
-    }, 0)
-
-    .to(".nav_right-icon", {
-      width: 0, height: 0, opacity: 0,
-      duration: 0.4
-    }, 0)
-
-    .to(".nav-timer", {
-      width: 0, height: 0, opacity: 0,
-      duration: 0.4
-    }, 0)
-
-
-    // ==========================================
-    // 5. СЖИМАЕМ GAP'Ы
-    // ==========================================
-    .to(".nav-left", {
-      gap: "0vw",
-      duration: 0.4
-    }, 0)
-
-    .to(".nav_right", {
-      gap: "0vw",
-      duration: 0.4
-    }, 0)
-
-    .to(".nav_lleft-wrapper", {
-      gap: "0vw",
-      duration: 0.4
-    }, 0)
-
-    .to(".nav_left-inner", {
-      gap: "0vw",
-      duration: 0.4
-    }, 0)
-
-
-    // ==========================================
-    // 6. ПОЯВЛЕНИЕ PROFIT-СЧЁТЧИКА
-    // ==========================================
-    .to(".nav-profit", {
-      width: "auto",
-      opacity: 1,
-      margin: "0 1vw",
-      duration: 0.4
-    }, 0)
-
-    .to(".nav-profit-item", {
-      opacity: 1,
-      y: 0,
-      duration: 1,
-      stagger: 0.15,
-      ease: "power2.out"
-    }, 0)
-
-
-    // ==========================================
-    // 7. ЛОГОТИП NEED.VISION
-    // ==========================================
-    .to(".nav-logo_img", {
-      width: "62%",
-      top: "4vw",
-      duration: 0.5,
-      ease: "power2.out"
-    }, 0)
-
-
-    // ==========================================
-    // 8. ИНВЕРСИЯ ИКОНОК
-    // ==========================================
-    .to(".nav-icon", {
-      filter: "invert(1)",
-      duration: 0.4
-    }, 0);
-
-
-  // ==========================================
-  // 9. ИНВЕРСИЯ НАВИГАЦИИ НАД БЕЛЫМ ФОНОМ (Stages)
+  // 4. ИНВЕРСИЯ НАВИГАЦИИ НАД БЕЖЕВОЙ СЕКЦИЕЙ
   // ==========================================
   const navInvertTl = gsap.timeline({
     scrollTrigger: {
@@ -220,12 +185,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  navInvertTl.fromTo(".container__1440px",
+  navInvertTl.fromTo(".menu_control-bar",
     { backgroundColor: "#ffffff" },
     { backgroundColor: "#040101", duration: 1, immediateRender: false },
     0);
 
-  navInvertTl.fromTo(".container__1440px *",
+  navInvertTl.fromTo(".menu_control-bar *",
     { color: "#000000" },
     { color: "#ffffff", duration: 1, immediateRender: false },
     0);
@@ -247,22 +212,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // ==========================================
-  // 10. КЛИК-МЕНЮ (открытие/закрытие)
+  // 5. КЛИК-МЕНЮ (открытие/закрытие)
   // ==========================================
-  const menuBtn = document.querySelector('.nav-menu');
-  const menuPanel = document.querySelector('.menu_overlay-content');
-  const menuTxt = document.querySelector('.nav-menu__txt');
-  const menuIcon = document.querySelector('.nav-menu__img');
-  const menuClose = document.querySelector('.menu_close-trigger');
-  const menuBackdrop = document.querySelector('.menu_backdrop');
+  const menuBtn = document.querySelector(".nav-menu");
+  const menuPanel = document.querySelector(".menu_dropdown-list");
+  const menuTxt = document.querySelector(".nav-menu__txt");
+  const menuIcon = document.querySelector(".nav-menu__img");
+  const menuBackdrop = document.querySelector(".menu_backdrop");
 
   if (menuBtn && menuPanel) {
-    let isOpen = false;
-
     function openMenu() {
-      isOpen = true;
+      menuOpen = true;
 
-      // Разворачиваем панель
+      // Экстренно догоняем «сжатое» состояние, даже если юзер у верха страницы.
+      gsap.to(compressTl, {
+        progress: 1,
+        duration: 0.35,
+        ease: "power2.out",
+        overwrite: true
+      });
+
+      // Раскрываем дропдаун.
       gsap.to(menuPanel, {
         height: "auto",
         opacity: 1,
@@ -270,7 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ease: "power3.out"
       });
 
-      // Backdrop появляется вместе с меню
       if (menuBackdrop) {
         gsap.to(menuBackdrop, {
           opacity: 1,
@@ -280,15 +249,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // MENU → CLOSE на верхней кнопке
-      gsap.to(menuTxt, {
-        opacity: 0,
-        duration: 0.15,
-        onComplete: () => {
-          menuTxt.textContent = "CLOSE";
-          gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
-        }
-      });
+      // MENU → CLOSE на верхней кнопке.
+      if (menuTxt) {
+        gsap.to(menuTxt, {
+          opacity: 0,
+          duration: 0.15,
+          onComplete: () => {
+            menuTxt.textContent = "CLOSE";
+            gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+          }
+        });
+      }
 
       if (menuIcon) {
         gsap.to(menuIcon, {
@@ -300,9 +271,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function closeMenu() {
-      isOpen = false;
+      // menuOpen снимаем по завершению tween'а компрессии, чтобы scroll-onUpdate
+      // не «перебил» возврат в нужный progress по дороге.
 
-      // Сворачиваем панель
       gsap.to(menuPanel, {
         height: 0,
         opacity: 0,
@@ -310,7 +281,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ease: "power3.in"
       });
 
-      // Backdrop исчезает вместе с меню
       if (menuBackdrop) {
         gsap.to(menuBackdrop, {
           opacity: 0,
@@ -320,15 +290,26 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // CLOSE → MENU
-      gsap.to(menuTxt, {
-        opacity: 0,
-        duration: 0.15,
-        onComplete: () => {
-          menuTxt.textContent = "MENU";
-          gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
-        }
+      // Возвращаемся к состоянию, диктуемому скроллом (если юзер у верха — к 0).
+      gsap.to(compressTl, {
+        progress: compressState.progress,
+        duration: 0.4,
+        ease: "power2.out",
+        overwrite: true,
+        onComplete: () => { menuOpen = false; }
       });
+
+      // CLOSE → MENU
+      if (menuTxt) {
+        gsap.to(menuTxt, {
+          opacity: 0,
+          duration: 0.15,
+          onComplete: () => {
+            menuTxt.textContent = "Menu";
+            gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+          }
+        });
+      }
 
       if (menuIcon) {
         gsap.to(menuIcon, {
@@ -339,38 +320,38 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Клик по верхней кнопке MENU/CLOSE
-    menuBtn.addEventListener('click', (e) => {
+    // Клик по верхней кнопке Menu/Close
+    menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      isOpen ? closeMenu() : openMenu();
+      menuOpen ? closeMenu() : openMenu();
     });
 
-    // Клик по menu_close-trigger (внутри развёрнутого меню)
-    if (menuClose) {
-      menuClose.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (isOpen) closeMenu();
-      });
-    }
-
-    // Клик по backdrop — закрыть
+    // Клик по затемняющей подложке — закрыть
     if (menuBackdrop) {
-      menuBackdrop.addEventListener('click', () => {
-        if (isOpen) closeMenu();
+      menuBackdrop.addEventListener("click", () => {
+        if (menuOpen) closeMenu();
       });
     }
 
     // Esc — закрыть
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && isOpen) closeMenu();
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && menuOpen) closeMenu();
     });
 
-    // Клик по ссылке меню — закрыть
-    const links = menuPanel.querySelectorAll('.nav_menu-link');
+    // Клик по любой ссылке внутри меню — закрыть
+    const links = menuPanel.querySelectorAll(".nav_menu-link");
     links.forEach(link => {
-      link.addEventListener('click', () => {
+      link.addEventListener("click", () => {
         closeMenu();
       });
     });
   }
-});
+}
+
+// Универсальный запуск: если DOM ещё парсится — ждём, иначе стартуем сразу.
+// Покрывает случай, когда CDN отдаёт скрипт уже после DOMContentLoaded.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootNavScroll);
+} else {
+  bootNavScroll();
+}
