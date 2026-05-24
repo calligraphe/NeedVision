@@ -127,7 +127,7 @@ function bootNavScroll() {
   }, 0);
 
   compressTl.to(".menu_overlay-content", {
-    width: "28vw",
+    width: "29vw",
     backgroundColor: "#ffffff",
     duration: 0.5,
     ease: "power2.out"
