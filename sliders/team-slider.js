@@ -57,6 +57,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const nextBtn = document.querySelector('.team_nav-btn');
   const dots = gsap.utils.toArray('.team_dot');
 
+  // ---- Кэш DOM-узлов, которые дёргаются на каждом updateSlider/updateTexts ----
+  // Раньше querySelector на эти элементы вызывался по N раз за свич слайда —
+  // для текстов это 5 запросов + 1 querySelectorAll, для headers — N штук.
+  // Кешируем один раз при init: дальше просто индексируем массивы.
+  const slideHeaders = slides.map(s => s.querySelector('.team_member-header'));
+  const dotFulls = dots.map(d => d.querySelector('.team_dot-full'));
+
+  const textTargets = {
+    role:  document.querySelector('.team_role-text'),
+    quote: document.querySelector('.team_quote-text'),
+    desc:  document.querySelector('.team_desc-text'),
+    sign:  document.querySelector('.team-sign')
+  };
+
+  // Номер слайда пишется во ВТОРУЮ .label-wrapper внутри .team_info-meta.
+  const metaLabels = document.querySelectorAll('.team_info-meta .label-wrapper');
+  const numTarget = metaLabels.length > 1
+    ? metaLabels[1].querySelectorAll('.label-text')[1]
+    : null;
+
   // ---- Тайминги ----
   const ANIM_DURATION = 1.0;
   const ANIM_EASE = "power2.inOut";
@@ -246,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
         zIndex: state.z
       }, 0);
 
-      const header = slide.querySelector('.team_member-header');
+      const header = slideHeaders[i];
       if (header) {
         tl.to(header, {
           opacity: state.headerOpacity,
@@ -256,14 +276,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    dots.forEach((dot, index) => {
-      const full = dot.querySelector('.team_dot-full');
-      if (full) {
-        tl.to(full, {
-          opacity: index === activeIndex ? 1 : 0,
-          duration: 0.3
-        }, 0);
-      }
+    dotFulls.forEach((full, index) => {
+      if (!full) return;
+      tl.to(full, {
+        opacity: index === activeIndex ? 1 : 0,
+        duration: 0.3
+      }, 0);
     });
 
     updateTexts(slides[activeIndex], activeIndex + 1);
@@ -278,16 +296,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const newDesc = activeSlide.querySelector('.team_data-description')?.innerHTML || '';
     const newSignSrc = activeSlide.querySelector('.team_data-sign')?.getAttribute('src') || '';
 
-    const targetRole = document.querySelector('.team_role-text');
-    const targetQuote = document.querySelector('.team_quote-text');
-    const targetDesc = document.querySelector('.team_desc-text');
-    const targetSign = document.querySelector('.team-sign');
-
-    const numWrappers = document.querySelectorAll('.team_info-meta .label-wrapper');
-    let targetNum = null;
-    if (numWrappers.length > 1) {
-      targetNum = numWrappers[1].querySelectorAll('.label-text')[1];
-    }
+    // textTargets / numTarget закэшированы при init — без DOM-запросов на каждом тике.
+    const targetRole = textTargets.role;
+    const targetQuote = textTargets.quote;
+    const targetDesc = textTargets.desc;
+    const targetSign = textTargets.sign;
+    const targetNum = numTarget;
 
     const elements = [targetRole, targetQuote, targetDesc, targetSign, targetNum].filter(el => el);
     if (elements.length === 0) return;
