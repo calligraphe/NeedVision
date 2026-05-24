@@ -2,51 +2,45 @@
  * NEED.VISION — Карусель кейсов
  * =============================
  *
- * Что делает: горизонтальная карусель кейсов.
- *   - drag/swipe по ЛЮБОМУ месту `.cases_slider-track` → next/prev слайд
- *   - чистый клик по неактивной карточке (без движения) → активировать её
- *   - клик по точке-индикатору                          → активировать слайд
- *   - клик в `.case-click-zone`                         → переход на страницу кейса
- *   - hover на неактивной карточке                      → серый фон + белый текст + инв. лого
- *
- * На крае слайдера (первый или последний слайд) drag в «нечего тянуть»
- * сторону — no-op. Работает только обратное направление.
- *
- * Архитектура (что чинит «тупит» в старой версии):
- *   - ОДИН Observer на .cases_slider-track вместо одного на каждую карточку
- *     → меньше слушателей, drag «ловит» весь видимый трек, включая зазоры
- *   - убран `isAnimating` lock — он блокировал любой ввод на TRACK_DURATION
- *     (0.8s). Теперь юзер может ремкать-драгать сколько угодно, GSAP сам
- *     убивает старые tween'ы через `overwrite: 'auto'`
- *   - DOM-узлы (.cases_slider-dot-full/empty, .case_card-content, .logo)
- *     закэшированы один раз в bootCasesSlider — больше нет querySelector
- *     внутри updateSlider на каждый клик
- *   - hover-обработчики игнорируют событие во время press (isPressed flag)
- *     — drag через карточки больше не «дёргает» hover-tween'ами
+ * Что делает: горизонтальная карусель кейсов. Управление:
+ *               - клик по карточке         → активировать её
+ *               - drag/swipe по карточке   → следующий/предыдущий слайд
+ *               - клик по точке-индикатору → активировать слайд
+ *             Drag привязан НЕ к широкой области `.cases_slider-track`,
+ *             а к самим карточкам (`.case_card`) — курсор `grab`
+ *             показывает, что тянуть можно именно за карточку.
+ *             Активная карточка визуально выделяется (тёмный фон /
+ *             белый текст / инвертированное лого).
+ *             Дополнительно: кастомный курсор-иконка в зоне
+ *             `.case-click-zone` (клик ведёт на страницу кейса).
  *
  * Зависимости:
  *   - GSAP 3.12.x
  *   - Observer
  *
  * Webflow селекторы:
- *   - .cases_slider-track    — движущаяся дорожка (drag target)
+ *   - .cases_slider-track    — движущаяся дорожка слайдов
  *   - .case_card             — отдельные карточки (слайды)
  *   - .cases_slider-dot      — точки-индикаторы
- *   - .cases_slider-dot-full — заполненный кружок (активная)
- *   - .cases_slider-dot-empty — пустой кружок (неактивная)
+ *   - .cases_slider-dot-full — внутренний заполнитель точки (опасити меняется)
  *   - .case_bg-image         — фоновые изображения каждого слайда
- *   - .cases_fraction-txt    — текст "2/4"
+ *   - .cases_fraction-txt    — текст вида "2/5" (текущий/всего)
  *   - .case_card-content     — внутренний контент карточки (меняет цвет/фон)
- *   - .case_tag-text         — тэг карточки (active class → visible)
+ *   - .case_tag-text         — тэг карточки (получает класс .active)
  *   - .case_client-logo      — лого клиента (инвертируется)
  *   - .case-click-zone       — зона клика (ведёт на страницу кейса)
- *   - .case-mouse-click      — кастомный курсор-иконка в click-zone
+ *   - .case-mouse-click      — кастомный курсор-иконка
+ *
+ * Атрибуты в Webflow:
+ *   - У активной карточки `<a href="...">` или `data-href="..."` на
+ *     самой карточке — куда вести при клике в `.case-click-zone`.
  *
  * Подключение:
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sliders/cases-slider.js"></script>
  */
 
-function bootCasesSlider() {
+document.addEventListener("DOMContentLoaded", () => {
+  // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
     console.warn("[Need Vision] cases-slider.js: GSAP не загружен");
     return;
@@ -56,54 +50,50 @@ function bootCasesSlider() {
     return;
   }
 
-  const track = document.querySelector(".cases_slider-track");
-  const slides = Array.from(document.querySelectorAll(".case_card"));
-  if (!track || slides.length === 0) return;
+  // ---- Проверка наличия элементов ----
+  const slides = document.querySelectorAll('.case_card');
+  const track = document.querySelector('.cases_slider-track');
+  if (slides.length === 0 || !track) return;
 
   gsap.registerPlugin(Observer);
 
-  const dots         = Array.from(document.querySelectorAll(".cases_slider-dot"));
-  const bgImages     = Array.from(document.querySelectorAll(".case_bg-image"));
-  const fractionTxt  = document.querySelector(".cases_fraction-txt");
-  const clickZone    = document.querySelector(".case-click-zone");
-  const mouseIcon    = document.querySelector(".case-mouse-click");
+  const dots = document.querySelectorAll('.cases_slider-dot');
+  const bgImages = document.querySelectorAll('.case_bg-image');
+  const fractionTxt = document.querySelector('.cases_fraction-txt');
 
-  // ---- Кэш внутренних узлов (querySelector один раз, не на каждый клик) ----
-  const dotFulls   = dots.map(d => d.querySelector(".cases_slider-dot-full"));
-  const dotEmpties = dots.map(d => d.querySelector(".cases_slider-dot-empty"));
-  const slideParts = slides.map(s => ({
-    content: s.querySelector(".case_card-content"),
-    tag:     s.querySelector(".case_tag-text"),
-    logo:    s.querySelector(".case_client-logo")
-  }));
+  // Кликабельная зона — ведёт на страницу кейса
+  const clickZone = document.querySelector('.case-click-zone');
+  const mouseClickIcon = document.querySelector('.case-mouse-click');
 
-  // ---- Константы ----
-  const SLIDE_STEP_VW   = 28;
-  const TRACK_DURATION  = 0.7;
-  const CONTENT_DURATION = 0.4;
-  const HOVER_DURATION  = 0.6;
-  const BG_DURATION     = 0.8;
-  const DOT_DURATION    = 0.4;
-  const DRAG_MIN        = 10;
-  const DRAG_TOLERANCE  = 20;
+  // ---- Тайминги и константы ----
+  const SLIDE_STEP_VW = 28;            // шаг сдвига дорожки на один слайд
+  const TRACK_DURATION = 0.8;          // длительность сдвига дорожки
+  const CONTENT_DURATION = 0.4;        // длительность смены цветов карточки
+  const HOVER_DURATION = 0.6;          // длительность hover-перекраски неактивной карточки
+  const BG_DURATION = 0.8;             // длительность фоновой подложки
+  const DOT_DURATION = 0.4;            // длительность анимации точки
+  const DRAG_MIN = 10;                 // минимум движения для drag
+  const DRAG_TOLERANCE = 20;
 
-  const HOVER_BG    = "#8F8E84";
+  // Цвета hover-состояния неактивной карточки
+  const HOVER_BG = "#8F8E84";
   const HOVER_COLOR = "#ffffff";
-  const IDLE_BG     = "#ffffff";
-  const IDLE_COLOR  = "#000000";
+  const IDLE_BG = "#ffffff";
+  const IDLE_COLOR = "#000000";
 
   let activeIndex = 0;
-  let isPressed   = false;
   const totalSlides = slides.length;
+  let isAnimating = false;
 
   gsap.set(bgImages, { opacity: 0 });
 
   // ==========================================
-  // КАСТОМНЫЙ КУРСОР В .case-click-zone
+  // КАСТОМНЫЙ КУРСОР В ЗОНЕ КЛИКА
   // ==========================================
-  if (clickZone && mouseIcon) {
-    clickZone.style.cursor = "none";
-    mouseIcon.style.cssText += `
+  if (clickZone && mouseClickIcon) {
+    clickZone.style.cursor = 'none';
+
+    mouseClickIcon.style.cssText += `
       position: fixed !important;
       pointer-events: none !important;
       z-index: 9999 !important;
@@ -111,199 +101,208 @@ function bootCasesSlider() {
       transform: translate(-50%, -50%) !important;
       transition: opacity 0.2s ease !important;
     `;
-    const xTo = gsap.quickTo(mouseIcon, "left", { duration: 0.25, ease: "power3.out" });
-    const yTo = gsap.quickTo(mouseIcon, "top",  { duration: 0.25, ease: "power3.out" });
 
-    clickZone.addEventListener("mouseenter", () => { mouseIcon.style.opacity = "1"; });
-    clickZone.addEventListener("mouseleave", () => { mouseIcon.style.opacity = "0"; });
-    clickZone.addEventListener("mousemove",  (e) => { xTo(e.clientX); yTo(e.clientY); });
+    const xTo = gsap.quickTo(mouseClickIcon, "left", { duration: 0.25, ease: "power3.out" });
+    const yTo = gsap.quickTo(mouseClickIcon, "top", { duration: 0.25, ease: "power3.out" });
 
-    clickZone.addEventListener("click", () => {
-      const active = slides[activeIndex];
-      if (!active) return;
-      const link = active.querySelector("a")?.getAttribute("href")
-                || active.getAttribute("data-href");
-      if (link) window.location.href = link;
+    clickZone.addEventListener('mouseenter', () => {
+      mouseClickIcon.style.opacity = '1';
+    });
+    clickZone.addEventListener('mouseleave', () => {
+      mouseClickIcon.style.opacity = '0';
+    });
+    clickZone.addEventListener('mousemove', (e) => {
+      xTo(e.clientX);
+      yTo(e.clientY);
+    });
+
+    // Клик по зоне = переход на страницу кейса
+    clickZone.addEventListener('click', () => {
+      const activeSlide = slides[activeIndex];
+      if (!activeSlide) return;
+      const link = activeSlide.querySelector('a')?.getAttribute('href')
+        || activeSlide.getAttribute('data-href');
+      if (link) {
+        window.location.href = link;
+      }
     });
   }
 
   // ==========================================
-  // ОБНОВЛЕНИЕ СЛАЙДЕРА
+  // ОСНОВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СЛАЙДЕРА
   // ==========================================
-  // Никаких локов. Все tween'ы с overwrite:'auto' — повторный вызов
-  // тут же убивает предыдущие. Юзер может щёлкать-драгать без лагов.
   function updateSlider(index) {
-    // Трек
+    if (isAnimating) return;
+    isAnimating = true;
+
+    // 1. Сдвигаем трек
     gsap.to(track, {
       x: `-${index * SLIDE_STEP_VW}vw`,
       duration: TRACK_DURATION,
       ease: "power2.inOut",
-      overwrite: "auto"
+      onComplete: () => { isAnimating = false; }
     });
 
-    // Фракция
-    if (fractionTxt) fractionTxt.textContent = `${index + 1}/${totalSlides}`;
+    // 2. Фракция
+    if (fractionTxt) {
+      fractionTxt.textContent = `${index + 1}/${totalSlides}`;
+    }
 
-    // Точки — пара full/empty, как в .stages
-    dotFulls.forEach((full, i) => {
-      if (!full) return;
-      gsap.to(full, {
-        opacity: i === index ? 1 : 0,
-        duration: DOT_DURATION,
-        ease: "power2.inOut",
-        overwrite: "auto"
-      });
-    });
-    dotEmpties.forEach((empty, i) => {
-      if (!empty) return;
-      gsap.to(empty, {
-        opacity: i === index ? 0 : 1,
-        duration: DOT_DURATION,
-        ease: "power2.inOut",
-        overwrite: "auto"
-      });
+    // 3. Точки
+    dots.forEach((dot, i) => {
+      const fullDot = dot.querySelector('.cases_slider-dot-full');
+      if (fullDot) {
+        gsap.to(fullDot, {
+          opacity: i === index ? 1 : 0,
+          duration: DOT_DURATION,
+          ease: "power2.inOut"
+        });
+      }
     });
 
-    // Фоновые изображения
+    // 4. Фоновые изображения
     bgImages.forEach((bg, i) => {
       gsap.to(bg, {
         opacity: i === index ? 1 : 0,
         duration: BG_DURATION,
-        ease: "power2.inOut",
-        overwrite: "auto"
+        ease: "power2.inOut"
       });
     });
 
-    // Карточки
-    slideParts.forEach((parts, i) => {
+    // 5. Стили внутри карточек
+    slides.forEach((slide, i) => {
+      const content = slide.querySelector('.case_card-content');
+      const tag = slide.querySelector('.case_tag-text');
+      const logo = slide.querySelector('.case_client-logo');
       const isActive = i === index;
-      if (parts.content) {
-        gsap.to(parts.content, {
-          backgroundColor: isActive ? "transparent" : IDLE_BG,
-          color: isActive ? "#ffffff" : IDLE_COLOR,
-          duration: CONTENT_DURATION,
-          overwrite: "auto"
+
+      if (isActive) {
+        // Активная карточка — на тёмном фоне
+        gsap.to(content, {
+          backgroundColor: "transparent",
+          color: "#ffffff",
+          duration: CONTENT_DURATION
         });
-      }
-      if (parts.tag) {
-        parts.tag.classList.toggle("active", isActive);
-      }
-      if (parts.logo) {
-        gsap.to(parts.logo, {
-          filter: isActive ? "brightness(0) invert(1)" : "brightness(0) invert(0)",
-          duration: CONTENT_DURATION,
-          overwrite: "auto"
+        if (tag) tag.classList.add('active');
+        if (logo) gsap.to(logo, {
+          filter: "brightness(0) invert(1)",
+          duration: CONTENT_DURATION
+        });
+      } else {
+        // Неактивная карточка — на белом фоне
+        gsap.to(content, {
+          backgroundColor: IDLE_BG,
+          color: IDLE_COLOR,
+          duration: CONTENT_DURATION
+        });
+        if (tag) tag.classList.remove('active');
+        if (logo) gsap.to(logo, {
+          filter: "brightness(0) invert(0)",
+          duration: CONTENT_DURATION
         });
       }
     });
   }
 
   // ==========================================
-  // НАВИГАЦИЯ — границы атомарно проверяются здесь
+  // ПЕРЕКЛЮЧЕНИЕ
   // ==========================================
-  function goNext() {
-    if (activeIndex >= totalSlides - 1) return;   // на крае «нечего тянуть»
-    activeIndex++;
-    updateSlider(activeIndex);
+  function nextSlide() {
+    if (activeIndex < totalSlides - 1) {
+      activeIndex++;
+      updateSlider(activeIndex);
+    }
   }
-  function goPrev() {
-    if (activeIndex <= 0) return;                 // на крае «нечего тянуть»
-    activeIndex--;
-    updateSlider(activeIndex);
-  }
-  function goTo(i) {
-    if (i < 0 || i >= totalSlides || i === activeIndex) return;
-    activeIndex = i;
-    updateSlider(activeIndex);
+
+  function prevSlide() {
+    if (activeIndex > 0) {
+      activeIndex--;
+      updateSlider(activeIndex);
+    }
   }
 
   // ==========================================
-  // ЕДИНЫЙ Observer на ВЕСЬ .cases_slider-track
+  // КЛИК И DRAG/SWIPE НА КАРТОЧКАХ
   // ==========================================
-  // Drag/swipe в любом месте трека → next/prev. Клик без движения
-  // (Observer сам различает: <DRAG_MIN px = click, >=DRAG_MIN = drag) →
-  // активировать карточку под курсором.
-  track.style.cursor = "grab";
+  // Один Observer на каждую `.case_card`:
+  //   - чистый клик (без движения)  → активировать карточку
+  //   - drag/свайп влево            → следующий слайд
+  //   - drag/свайп вправо           → предыдущий слайд
+  // GSAP Observer сам разводит «клик» и «drag»: если за время нажатия
+  // пройдено меньше DRAG_MIN пикселей, событие считается кликом и
+  // вызывается onClick; иначе — направленный onLeft/onRight.
+  slides.forEach((slide, i) => {
+    slide.style.cursor = 'grab';
 
-  Observer.create({
-    target: track,
-    type: "touch,pointer",
-    dragMinimum: DRAG_MIN,
-    tolerance: DRAG_TOLERANCE,
-    onPress:    () => { isPressed = true;  track.style.cursor = "grabbing"; },
-    onRelease:  () => { isPressed = false; track.style.cursor = "grab"; },
-    onLeft:     goNext,
-    onRight:    goPrev,
-    onClick: (self) => {
-      const card = self.event?.target?.closest?.(".case_card");
-      if (!card) return;
-      const i = slides.indexOf(card);
-      goTo(i);
+    Observer.create({
+      target: slide,
+      type: "touch,pointer",
+      dragMinimum: DRAG_MIN,
+      tolerance: DRAG_TOLERANCE,
+      onPress: () => { slide.style.cursor = 'grabbing'; },
+      onRelease: () => { slide.style.cursor = 'grab'; },
+      onLeft: () => nextSlide(),
+      onRight: () => prevSlide(),
+      onClick: () => {
+        if (activeIndex !== i) {
+          activeIndex = i;
+          updateSlider(activeIndex);
+        }
+      }
+    });
+
+    // Hover для НЕактивной карточки: фон #8F8E84, текст белый, лого инвертируется.
+    // На активной карточке игнорируем — у неё свой стиль (transparent + белый).
+    const content = slide.querySelector('.case_card-content');
+    const hoverLogo = slide.querySelector('.case_client-logo');
+    if (content) {
+      slide.addEventListener('mouseenter', () => {
+        if (i === activeIndex) return;
+        gsap.to(content, {
+          backgroundColor: HOVER_BG,
+          color: HOVER_COLOR,
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+        if (hoverLogo) {
+          gsap.to(hoverLogo, {
+            filter: "brightness(0) invert(1)",
+            duration: HOVER_DURATION,
+            ease: "power2.out"
+          });
+        }
+      });
+      slide.addEventListener('mouseleave', () => {
+        if (i === activeIndex) return;
+        gsap.to(content, {
+          backgroundColor: IDLE_BG,
+          color: IDLE_COLOR,
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+        if (hoverLogo) {
+          gsap.to(hoverLogo, {
+            filter: "brightness(0) invert(0)",
+            duration: HOVER_DURATION,
+            ease: "power2.out"
+          });
+        }
+      });
     }
   });
 
   // ==========================================
-  // HOVER на НЕактивной карточке
-  // ==========================================
-  // Игнорируем во время press (драг через карточки больше не дёргает hover).
-  slideParts.forEach((parts, i) => {
-    if (!parts.content) return;
-    const slide = slides[i];
-
-    slide.addEventListener("mouseenter", () => {
-      if (i === activeIndex || isPressed) return;
-      gsap.to(parts.content, {
-        backgroundColor: HOVER_BG,
-        color: HOVER_COLOR,
-        duration: HOVER_DURATION,
-        ease: "power2.out",
-        overwrite: "auto"
-      });
-      if (parts.logo) {
-        gsap.to(parts.logo, {
-          filter: "brightness(0) invert(1)",
-          duration: HOVER_DURATION,
-          ease: "power2.out",
-          overwrite: "auto"
-        });
-      }
-    });
-
-    slide.addEventListener("mouseleave", () => {
-      if (i === activeIndex) return;
-      gsap.to(parts.content, {
-        backgroundColor: IDLE_BG,
-        color: IDLE_COLOR,
-        duration: HOVER_DURATION,
-        ease: "power2.out",
-        overwrite: "auto"
-      });
-      if (parts.logo) {
-        gsap.to(parts.logo, {
-          filter: "brightness(0) invert(0)",
-          duration: HOVER_DURATION,
-          ease: "power2.out",
-          overwrite: "auto"
-        });
-      }
-    });
-  });
-
-  // ==========================================
-  // КЛИК ПО ТОЧКЕ-ИНДИКАТОРУ
+  // КЛИКИ ПО ТОЧКАМ-ИНДИКАТОРАМ
   // ==========================================
   dots.forEach((dot, i) => {
-    dot.addEventListener("click", () => goTo(i));
+    dot.addEventListener('click', () => {
+      if (activeIndex !== i) {
+        activeIndex = i;
+        updateSlider(activeIndex);
+      }
+    });
   });
 
-  // ==========================================
-  // ПЕРВАЯ ОТРИСОВКА
-  // ==========================================
+  // Первая отрисовка
   updateSlider(0);
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootCasesSlider);
-} else {
-  bootCasesSlider();
-}
+});

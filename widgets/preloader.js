@@ -47,10 +47,13 @@ function bootPreloader() {
   if (icons.length === 0) return;
 
   // ---- Тайминги ----
-  const FRAME_MS       = 90;     // длительность одного кадра цикла (~11 fps)
-  const MIN_DISPLAY_MS = 600;    // минимум видимости — не «мигает» на fast load
-  const FADE_DURATION  = 0.55;   // gsap fade-out секунд
-  const NAV_DELAY_MS   = 220;    // пауза перед location.href при переходе
+  // Подобрано «премиально»: цикл размереннее, fade длиннее и мягче,
+  // минимальная видимость даёт юзеру успеть «прочитать» прелоудер
+  // даже на быстром соединении.
+  const FRAME_MS       = 135;    // длительность одного кадра цикла (~7.4 fps)
+  const MIN_DISPLAY_MS = 1000;   // минимум видимости — premium dwell time
+  const FADE_DURATION  = 1.0;    // длинный плавный fade-out
+  const NAV_DELAY_MS   = 320;    // пауза перед location.href — успевает войти fade-in
 
   // ---- Состояние ----
   let cycleRunning = false;
@@ -125,15 +128,17 @@ function bootPreloader() {
       };
 
       if (typeof gsap !== "undefined") {
+        // expo.out — premium-кривая: лёгкий старт, долгое мягкое
+        // затухание. Чувствуется «дороже» чем power2.out.
         gsap.to(preloader, {
           opacity: 0,
           duration: FADE_DURATION,
-          ease: "power2.out",
+          ease: "expo.out",
           onComplete: onDone
         });
       } else {
-        // Fallback без GSAP
-        preloader.style.transition = `opacity ${FADE_DURATION}s ease-out`;
+        // Fallback без GSAP — cubic-bezier близкий к expo.out
+        preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
         preloader.style.opacity = "0";
         setTimeout(onDone, FADE_DURATION * 1000);
       }
