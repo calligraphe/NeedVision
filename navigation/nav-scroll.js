@@ -83,9 +83,9 @@ function bootNavScroll() {
     pointerEvents: "none"
   });
 
-  // У control-bar в CSS нет явного bg — задаём прозрачно-белый, чтобы
-  // дальнейший tween в #ffffff корректно интерполировал альфу.
-  gsap.set(".menu_control-bar", {
+  // У .menu_overlay-content в CSS нет явного bg — задаём прозрачно-белый,
+  // чтобы дальнейший tween в #ffffff корректно интерполировал альфу.
+  gsap.set(".menu_overlay-content", {
     backgroundColor: "rgba(255,255,255,0)"
   });
 
@@ -119,10 +119,6 @@ function bootNavScroll() {
 
   compressTl.to(".menu_overlay-content", {
     width: "28vw",
-    duration: 0.4
-  }, P2);
-
-  compressTl.to(".menu_control-bar", {
     backgroundColor: "#ffffff",
     duration: 0.4
   }, P2);
@@ -197,7 +193,7 @@ function bootNavScroll() {
     }
   });
 
-  navInvertTl.fromTo(".menu_control-bar",
+  navInvertTl.fromTo(".menu_overlay-content",
     { backgroundColor: "#ffffff" },
     { backgroundColor: "#040101", duration: 1, immediateRender: false },
     0);
