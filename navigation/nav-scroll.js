@@ -98,63 +98,76 @@ function bootNavScroll() {
   //   - клик по меню «экстренно» форсит progress в 1.
   const compressTl = gsap.timeline({ paused: true });
 
-  // --- ФАЗА 1 (позиция 0): лого СНАПом встаёт на место, .nav-btm на 1vw вниз ---
-  // Должно отработать за первые ~50px скролла (≈7% диапазона), чтобы юзер
-  // почти сразу увидел финальное положение лого, а потом пошла компрессия.
+  // Все tween'ы стартуют в позиции 0 — едут параллельно, но с разной
+  // длительностью. Лого ВСЕГО ~0.25s → успевает «приземлиться» до того,
+  // как плашка завершит покраску. Этим лого не пересекается визуально
+  // с верхней частью на этапе её перекраса.
+  //
+  //   t=0       t=0.25     t=0.35   t=0.5         t=1.1
+  //   ├─ ЛОГО ──┤
+  //   ├─ NAV-BTM (marginTop 0.7vw) ──┤
+  //   ├─ ОВЕРЛЕЙ (width + bg) ──────────┤
+  //   ├─ ТЕКСТ control-bar (color) ─────┤
+  //   ├─ PROFIT badge (width+opacity) ──┤
+  //   ├─ NAV-ICON (filter invert) ──┤
+  //   ├─ HIDE left/right/timer ─────┤
+  //   ├─ PROFIT items (stagger) ────────────────────────┤
+
   compressTl.to(".nav-logo_img", {
     width: "62%",
     top: "4vw",
-    duration: 0.1,
+    duration: 0.25,
     ease: "power2.out"
   }, 0);
 
   compressTl.to(".nav-btm", {
-    marginTop: "1vw",
-    duration: 0.1,
+    marginTop: "0.7vw",
+    duration: 0.35,
     ease: "power2.out"
   }, 0);
-
-  // --- ФАЗА 2 (позиция 0.1): плашка сжимается, контент перекрашивается ---
-  // Стартует сразу после фазы 1 — без зазора.
-  const P2 = 0.1;
 
   compressTl.to(".menu_overlay-content", {
     width: "28vw",
     backgroundColor: "#ffffff",
-    duration: 0.4
-  }, P2);
+    duration: 0.5,
+    ease: "power2.out"
+  }, 0);
 
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
-    duration: 0.4
-  }, P2);
+    duration: 0.5,
+    ease: "power2.out"
+  }, 0);
 
   compressTl.to(".menu_profit-badge", {
     width: "auto",
     opacity: 1,
     margin: "0 0.5vw",
-    duration: 0.4
-  }, P2);
+    duration: 0.5,
+    ease: "power2.out"
+  }, 0);
 
   compressTl.to(".nav-profit-item", {
     opacity: 1,
     y: 0,
-    duration: 1,
-    stagger: 0.15,
+    duration: 0.8,
+    stagger: 0.1,
     ease: "power2.out"
-  }, P2);
+  }, 0);
 
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
-    duration: 0.4
-  }, P2);
+    duration: 0.4,
+    ease: "power2.out"
+  }, 0);
 
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     width: 0,
     height: 0,
     opacity: 0,
-    duration: 0.4
-  }, P2);
+    duration: 0.4,
+    ease: "power2.out"
+  }, 0);
 
 
   // ==========================================
