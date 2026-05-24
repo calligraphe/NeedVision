@@ -246,31 +246,49 @@ function bootNavScroll() {
   const menuBackdrop = document.querySelector(".menu_backdrop");
 
   if (menuBtn && menuPanel) {
+    // Границы скругления плашки .menu_overlay-content при клике по меню.
+    // CSS-дефолт = 5vw (пилюля), при открытом меню сглаживаем до 1.4vw.
+    // НЕ трогается скроллом — только по клику меню.
+    const RADIUS_DEFAULT = "5vw";
+    const RADIUS_OPEN    = "1.4vw";
+
     function openMenu() {
       menuOpen = true;
 
-      // Экстренно догоняем «сжатое» состояние, даже если юзер у верха страницы.
+      // Догоняем «сжатое» состояние плавно. ease 'power3.inOut' даёт
+      // более мягкий вход/выход чем 'power2.out'.
       gsap.to(compressTl, {
         progress: 1,
-        duration: 0.35,
-        ease: "power2.out",
+        duration: 0.55,
+        ease: "power3.inOut",
         overwrite: true
       });
 
-      // Раскрываем дропдаун.
+      // Плашка сглаживает углы — параллельно с раскрытием дропдауна.
+      gsap.to(".menu_overlay-content", {
+        borderRadius: RADIUS_OPEN,
+        duration: 0.65,
+        ease: "power3.out",
+        overwrite: "auto"
+      });
+
+      // Раскрываем дропдаун — длиннее и с экспоненциальной кривой
+      // (быстрый старт, мягкое успокоение в конце).
       gsap.to(menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 0.6,
-        ease: "power3.out"
+        duration: 0.8,
+        ease: "expo.out",
+        overwrite: "auto"
       });
 
       if (menuBackdrop) {
         gsap.to(menuBackdrop, {
           opacity: 1,
-          duration: 0.5,
-          ease: "power2.out",
-          pointerEvents: "auto"
+          duration: 0.65,
+          ease: "power3.out",
+          pointerEvents: "auto",
+          overwrite: "auto"
         });
       }
 
@@ -278,10 +296,12 @@ function bootNavScroll() {
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.15,
+          duration: 0.18,
+          ease: "power2.in",
+          overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "CLOSE";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.22, ease: "power2.out" });
           }
         });
       }
@@ -289,8 +309,9 @@ function bootNavScroll() {
       if (menuIcon) {
         gsap.to(menuIcon, {
           rotation: 45,
-          duration: 0.4,
-          ease: "power2.out"
+          duration: 0.5,
+          ease: "power3.out",
+          overwrite: "auto"
         });
       }
     }
@@ -302,24 +323,34 @@ function bootNavScroll() {
       gsap.to(menuPanel, {
         height: 0,
         opacity: 0,
-        duration: 0.5,
-        ease: "power3.in"
+        duration: 0.6,
+        ease: "expo.in",
+        overwrite: "auto"
+      });
+
+      // Плашка возвращает 5vw скругление синхронно с закрытием дропдауна.
+      gsap.to(".menu_overlay-content", {
+        borderRadius: RADIUS_DEFAULT,
+        duration: 0.6,
+        ease: "power3.inOut",
+        overwrite: "auto"
       });
 
       if (menuBackdrop) {
         gsap.to(menuBackdrop, {
           opacity: 0,
-          duration: 0.4,
-          ease: "power2.in",
-          pointerEvents: "none"
+          duration: 0.5,
+          ease: "power3.in",
+          pointerEvents: "none",
+          overwrite: "auto"
         });
       }
 
       // Возвращаемся к состоянию, диктуемому скроллом (если юзер у верха — к 0).
       gsap.to(compressTl, {
         progress: compressState.progress,
-        duration: 0.4,
-        ease: "power2.out",
+        duration: 0.55,
+        ease: "power3.inOut",
         overwrite: true,
         onComplete: () => { menuOpen = false; }
       });
@@ -328,10 +359,12 @@ function bootNavScroll() {
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.15,
+          duration: 0.18,
+          ease: "power2.in",
+          overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "Menu";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.15 });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.22, ease: "power2.out" });
           }
         });
       }
@@ -339,8 +372,9 @@ function bootNavScroll() {
       if (menuIcon) {
         gsap.to(menuIcon, {
           rotation: 0,
-          duration: 0.4,
-          ease: "power2.out"
+          duration: 0.5,
+          ease: "power3.out",
+          overwrite: "auto"
         });
       }
     }
