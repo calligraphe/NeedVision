@@ -252,125 +252,140 @@ function bootNavScroll() {
     const RADIUS_DEFAULT = "1.5vw";
     const RADIUS_OPEN    = "1.5vw";
 
+    // Единый timeline, в котором живут оба сценария (open / close).
+    // Каждый новый клик убивает предыдущий → нет наложений и рваных переходов.
+    let menuTl = null;
+
     function openMenu() {
       menuOpen = true;
+      if (menuTl) menuTl.kill();
 
-      // Догоняем «сжатое» состояние плавно. ease 'power3.inOut' даёт
-      // более мягкий вход/выход чем 'power2.out'.
-      gsap.to(compressTl, {
-        progress: 1,
-        duration: 0.55,
-        ease: "power3.inOut",
-        overwrite: true
-      });
+      // Если плашка ещё не сжата (юзер у верха или на полпути) — сначала
+      // визуально сжимаем её, и только ПОТОМ раскрываем дропдаун.
+      // Если уже сжата (юзер проскроллил) — шаг компрессии пропускаем.
+      const needsCompress = compressTl.progress() < 0.99;
 
-      // Плашка сглаживает углы — параллельно с раскрытием дропдауна.
-      gsap.to(".menu_overlay-content", {
-        borderRadius: RADIUS_OPEN,
-        duration: 0.65,
-        ease: "power3.out",
-        overwrite: "auto"
-      });
+      menuTl = gsap.timeline();
 
-      // Раскрываем дропдаун — длиннее и с экспоненциальной кривой
-      // (быстрый старт, мягкое успокоение в конце).
-      gsap.to(menuPanel, {
+      // ---- ШАГ 1 (опционально): визуальное сжатие плашки ----
+      if (needsCompress) {
+        menuTl.to(compressTl, {
+          progress: 1,
+          duration: 0.6,
+          ease: "power3.inOut",
+          overwrite: true
+        }, 0);
+      }
+
+      // ---- ШАГ 2: раскрытие дропдауна + радиус + бэкдроп ----
+      // Лёгкое перекрытие с компрессией (-0.12) — плавный переход без зазора.
+      const dropdownPos = needsCompress ? "-=0.12" : 0;
+
+      menuTl.to(menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 0.8,
-        ease: "expo.out",
-        overwrite: "auto"
-      });
+        duration: 0.85,
+        ease: "expo.out"
+      }, dropdownPos);
+
+      menuTl.to(".menu_overlay-content", {
+        borderRadius: RADIUS_OPEN,
+        duration: 0.7,
+        ease: "power3.out"
+      }, "<");
 
       if (menuBackdrop) {
-        gsap.to(menuBackdrop, {
+        menuTl.to(menuBackdrop, {
           opacity: 1,
-          duration: 0.65,
-          ease: "power3.out",
           pointerEvents: "auto",
-          overwrite: "auto"
-        });
+          duration: 0.7,
+          ease: "power3.out"
+        }, "<");
       }
 
-      // MENU → CLOSE на верхней кнопке.
-      if (menuTxt) {
-        gsap.to(menuTxt, {
-          opacity: 0,
-          duration: 0.18,
-          ease: "power2.in",
-          overwrite: "auto",
-          onComplete: () => {
-            menuTxt.textContent = "CLOSE";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.22, ease: "power2.out" });
-          }
-        });
-      }
-
-      // Бургер → крестик через CSS-класс (transition в styles/custom.css).
-      // Никакого GSAP-tween на иконке: CSS-transform на GPU, без overhead'а.
+      // Иконка (CSS-class, GPU-анимация).
       if (menuIcon) {
         menuIcon.classList.add("is-open");
         menuIcon.setAttribute("aria-expanded", "true");
       }
-    }
 
-    function closeMenu() {
-      // menuOpen снимаем по завершению tween'а компрессии, чтобы scroll-onUpdate
-      // не «перебил» возврат в нужный progress по дороге.
-
-      gsap.to(menuPanel, {
-        height: 0,
-        opacity: 0,
-        duration: 0.6,
-        ease: "expo.in",
-        overwrite: "auto"
-      });
-
-      // Плашка возвращает 5vw скругление синхронно с закрытием дропдауна.
-      gsap.to(".menu_overlay-content", {
-        borderRadius: RADIUS_DEFAULT,
-        duration: 0.6,
-        ease: "power3.inOut",
-        overwrite: "auto"
-      });
-
-      if (menuBackdrop) {
-        gsap.to(menuBackdrop, {
-          opacity: 0,
-          duration: 0.5,
-          ease: "power3.in",
-          pointerEvents: "none",
-          overwrite: "auto"
-        });
-      }
-
-      // Возвращаемся к состоянию, диктуемому скроллом (если юзер у верха — к 0).
-      gsap.to(compressTl, {
-        progress: compressState.progress,
-        duration: 0.55,
-        ease: "power3.inOut",
-        overwrite: true,
-        onComplete: () => { menuOpen = false; }
-      });
-
-      // CLOSE → MENU
+      // Текст MENU → CLOSE — независимый short tween, не блокирует timeline.
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.18,
+          duration: 0.2,
+          ease: "power2.in",
+          overwrite: "auto",
+          onComplete: () => {
+            menuTxt.textContent = "CLOSE";
+            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
+          }
+        });
+      }
+    }
+
+    function closeMenu() {
+      if (menuTl) menuTl.kill();
+
+      // menuOpen=false ставим в onComplete всего timeline — пока идёт close,
+      // scroll-onUpdate не перебивает наш tween на compressTl.
+      menuTl = gsap.timeline({
+        onComplete: () => { menuOpen = false; }
+      });
+
+      // ---- ШАГ 1: схлопывание дропдауна + радиус + бэкдроп (параллельно) ----
+      menuTl.to(menuPanel, {
+        height: 0,
+        opacity: 0,
+        duration: 0.55,
+        ease: "expo.in"
+      }, 0);
+
+      menuTl.to(".menu_overlay-content", {
+        borderRadius: RADIUS_DEFAULT,
+        duration: 0.55,
+        ease: "power3.inOut"
+      }, 0);
+
+      if (menuBackdrop) {
+        menuTl.to(menuBackdrop, {
+          opacity: 0,
+          pointerEvents: "none",
+          duration: 0.5,
+          ease: "power3.in"
+        }, 0);
+      }
+
+      // ---- ШАГ 2: возврат компрессии к scroll-state ----
+      // Если юзер у верха — плашка плавно «раскрывается обратно в дефолт».
+      // Если внизу — compressState.progress=1 → tween будет no-op.
+      // Лёгкое перекрытие с закрытием (-0.18), чтобы переход ощущался как
+      // один цельный жест, а не два рывка.
+      menuTl.to(compressTl, {
+        progress: compressState.progress,
+        duration: 0.65,
+        ease: "power3.inOut",
+        overwrite: true
+      }, "-=0.18");
+
+      // Иконка (CSS-class).
+      if (menuIcon) {
+        menuIcon.classList.remove("is-open");
+        menuIcon.setAttribute("aria-expanded", "false");
+      }
+
+      // Текст CLOSE → MENU
+      if (menuTxt) {
+        gsap.to(menuTxt, {
+          opacity: 0,
+          duration: 0.2,
           ease: "power2.in",
           overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "Menu";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.22, ease: "power2.out" });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
           }
         });
-      }
-
-      // Крестик → бургер (тот же CSS-transition).
-      if (menuIcon) {
-        menuIcon.classList.remove("is-open");
-        menuIcon.setAttribute("aria-expanded", "false");
       }
     }
 
