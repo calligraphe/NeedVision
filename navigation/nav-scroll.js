@@ -247,9 +247,9 @@ function bootNavScroll() {
 
   if (menuBtn && menuPanel) {
     // Границы скругления плашки .menu_overlay-content при клике по меню.
-    // CSS-дефолт = 5vw (пилюля), при открытом меню сглаживаем до 1.4vw.
+    // CSS-дефолт = 1.5vw, при открытом меню сглаживаем до 1.4vw.
     // НЕ трогается скроллом — только по клику меню.
-    const RADIUS_DEFAULT = "5vw";
+    const RADIUS_DEFAULT = "1.5vw";
     const RADIUS_OPEN    = "1.4vw";
 
     function openMenu() {
