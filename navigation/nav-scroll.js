@@ -161,14 +161,31 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
-  // Иконки/таймер — плавный fade-out в первые ~100px скролла (≈0.125
-  // прогресса от полного таймлайна 1.1s). Размеры не схлопываем — это
-  // вызывало «дёргание». Просто уходим в прозрачность.
+  // Иконки/таймер — два этапа, чтобы не было ни «дёрганья», ни огромного
+  // пустого .nav_bar над плашкой:
+  //   (а) первые ~100px скролла — плавный fade-out (opacity → 0)
+  //   (б) после fade — коллапс width/height (плавно сложиться в 0,
+  //       пока элементы уже невидимы, чтобы убрать их из flow)
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     opacity: 0,
     duration: 0.15,
     ease: "power2.out"
   }, 0);
+
+  compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
+    width: 0,
+    height: 0,
+    duration: 0.25,
+    ease: "power2.inOut"
+  }, 0.15);
+
+  // .nav_bar тоже стягиваем (padding-top: 0.3vw → 0), чтобы строка
+  // полностью исчезла как занятое место под плашкой.
+  compressTl.to(".nav_bar", {
+    paddingTop: 0,
+    duration: 0.25,
+    ease: "power2.inOut"
+  }, 0.15);
 
 
   // ==========================================
