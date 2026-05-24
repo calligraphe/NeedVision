@@ -28,18 +28,16 @@ function bootTimerPlaceClock() {
   const TIME_UPDATE_MS = 60000;
 
   // ==========================================
-  // 1. ГОРОД — статично
+  // 1. ГОРОД — статично, ВО ВСЕ копии .timer-place (нав + футер и т.д.)
   // ==========================================
-  const placeElement = document.querySelector(".timer-place");
-  if (placeElement) {
-    placeElement.textContent = CITY;
-  }
+  const placeElements = document.querySelectorAll(".timer-place");
+  placeElements.forEach(el => { el.textContent = CITY; });
 
   // ==========================================
-  // 2. ЧАСЫ — Asia/Tbilisi через Intl.DateTimeFormat
+  // 2. ЧАСЫ — Asia/Tbilisi через Intl.DateTimeFormat, ВО ВСЕ .timer-time
   // ==========================================
-  const timeElement = document.querySelector(".timer-time");
-  if (!timeElement) return;
+  const timeElements = document.querySelectorAll(".timer-time");
+  if (timeElements.length === 0) return;
 
   // Кэшируем форматтер — он тяжеловесный, не пересоздаём на каждый тик.
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -53,7 +51,8 @@ function bootTimerPlaceClock() {
     // Intl выдаёт "4:45 PM" — приводим к нижнему регистру AM/PM ("4:45 pm"),
     // т.к. визуально это лучше совпадает с дизайном (мелкие подписи).
     const raw = formatter.format(new Date());
-    timeElement.textContent = raw.replace(/AM$/i, "am").replace(/PM$/i, "pm");
+    const formatted = raw.replace(/AM$/i, "am").replace(/PM$/i, "pm");
+    timeElements.forEach(el => { el.textContent = formatted; });
   }
 
   updateTime();
