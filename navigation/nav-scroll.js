@@ -161,10 +161,12 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
-  // Иконки/таймер — только плавное исчезание (opacity) в первые ~100px.
-  // Размеры не схлопываем — оставляем место как есть.
+  // Иконки/таймер — плавный fade + одновременный коллапс высоты.
+  // Высота уезжает в 0 параллельно с opacity, чтобы .nav_bar тоже
+  // схлопнулся и не оставлял пустого отступа над плашкой.
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     opacity: 0,
+    height: 0,
     duration: 0.15,
     ease: "power2.out"
   }, 0);
