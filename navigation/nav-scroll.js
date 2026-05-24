@@ -176,64 +176,82 @@ function bootNavScroll() {
 
 
   // ==========================================
-  // 3. СКРОЛЛ-ДРАЙВЕР: proxy.progress → compressTl
+  // 3. РЕЖИМ НАВИГАЦИИ: scroll-driven ИЛИ static
   // ==========================================
-  // Скролл тянет proxy через scrub:1 → плавно, без «лесенки». Когда меню
-  // открыто — игнорируем входящие апдейты, чтобы не перебивать клик-анимацию.
-  const compressState = { progress: 0 };
+  // Webflow body может иметь `data-nav-mode="static"` — выставляется в
+  // Designer → Body → Element Settings → Custom Attributes на тех страницах,
+  // где навигация должна сразу быть в «сжатом» виде (например /cases).
+  // Static-режим:
+  //   - НЕТ scroll-driven компрессии (плашка изначально в финальном виде:
+  //     29vw, белая, лого внизу, profit видимый, иконки скрыты)
+  //   - НЕТ инверсии над .stages (на этих страницах секции нет)
+  //   - Меню по клику работает как обычно (open/close timeline)
+  const isStaticNav = document.body?.dataset?.navMode === "static";
+
+  // compressState нужен в обоих режимах:
+  //   - scroll-driven: обновляется ScrollTrigger'ом, используется в closeMenu
+  //     для возврата плашки в текущий scroll-state
+  //   - static: фиксирован на 1, closeMenu никуда не двигает плашку
+  const compressState = { progress: isStaticNav ? 1 : 0 };
   let menuOpen = false;
 
-  gsap.to(compressState, {
-    progress: 1,
-    ease: "none",
-    scrollTrigger: {
-      trigger: "body",
-      start: "top top",
-      end: "+=800",
-      scrub: 1
-    },
-    onUpdate: () => {
-      if (!menuOpen) {
-        compressTl.progress(compressState.progress);
+  if (isStaticNav) {
+    // Сразу применяем финальное состояние, без анимации и без ScrollTrigger.
+    compressTl.progress(1);
+  } else {
+    // ---- SCROLL-DRIVER: proxy.progress → compressTl ----
+    // Скролл тянет proxy через scrub:1 → плавно, без «лесенки». Когда меню
+    // открыто — игнорируем входящие апдейты, чтобы не перебивать клик-анимацию.
+    gsap.to(compressState, {
+      progress: 1,
+      ease: "none",
+      scrollTrigger: {
+        trigger: "body",
+        start: "top top",
+        end: "+=800",
+        scrub: 1
+      },
+      onUpdate: () => {
+        if (!menuOpen) {
+          compressTl.progress(compressState.progress);
+        }
       }
-    }
-  });
+    });
 
 
-  // ==========================================
-  // 4. ИНВЕРСИЯ НАВИГАЦИИ НАД БЕЖЕВОЙ СЕКЦИЕЙ
-  // ==========================================
-  const navInvertTl = gsap.timeline({
-    scrollTrigger: {
-      trigger: ".stages",
-      start: "top 85%",
-      end: "top 25%",
-      scrub: true
-    }
-  });
+    // ---- ИНВЕРСИЯ НАВИГАЦИИ НАД БЕЖЕВОЙ СЕКЦИЕЙ ----
+    const navInvertTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: ".stages",
+        start: "top 85%",
+        end: "top 25%",
+        scrub: true
+      }
+    });
 
-  // .to вместо .fromTo: на границе stages GSAP захватит текущее состояние
-  // (которое compressTl уже оставил), не «пробивая» его форсированным from-value.
-  // Так не появляется flicker, если compressTl ещё в анимации.
-  navInvertTl.to(".menu_overlay-content",
-    { backgroundColor: "#040101", duration: 1, immediateRender: false },
-    0);
+    // .to вместо .fromTo: на границе stages GSAP захватит текущее состояние
+    // (которое compressTl уже оставил), не «пробивая» его форсированным from-value.
+    // Так не появляется flicker, если compressTl ещё в анимации.
+    navInvertTl.to(".menu_overlay-content",
+      { backgroundColor: "#040101", duration: 1, immediateRender: false },
+      0);
 
-  navInvertTl.to(".menu_control-bar *",
-    { color: "#ffffff", duration: 1, immediateRender: false },
-    0);
+    navInvertTl.to(".menu_control-bar *",
+      { color: "#ffffff", duration: 1, immediateRender: false },
+      0);
 
-  navInvertTl.to(".nav-btm, .nav-btm *",
-    { color: "#000000", duration: 1, immediateRender: false },
-    0);
+    navInvertTl.to(".nav-btm, .nav-btm *",
+      { color: "#000000", duration: 1, immediateRender: false },
+      0);
 
-  navInvertTl.to(".nav-logo_img",
-    { filter: "invert(1)", duration: 1, immediateRender: false },
-    0);
+    navInvertTl.to(".nav-logo_img",
+      { filter: "invert(1)", duration: 1, immediateRender: false },
+      0);
 
-  navInvertTl.to(".nav-icon",
-    { filter: "invert(0)", duration: 1, immediateRender: false },
-    0);
+    navInvertTl.to(".nav-icon",
+      { filter: "invert(0)", duration: 1, immediateRender: false },
+      0);
+  }
 
 
   // ==========================================
