@@ -114,9 +114,11 @@ function bootNavScroll() {
   //                                    ├─ NAV-ICON (invert) ─────┤
   const TOP_DELAY = 0.2;
 
+  // y вместо top — translateY работает на compositor'е без layout reflow.
+  // top: 0vw в CSS остаётся → итоговая позиция = top(0) + translateY(4vw) = 4vw.
   compressTl.to(".nav-logo_img", {
     width: "62%",
-    top: "4vw",
+    y: "4vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
@@ -210,28 +212,26 @@ function bootNavScroll() {
     }
   });
 
-  navInvertTl.fromTo(".menu_overlay-content",
-    { backgroundColor: "#ffffff" },
+  // .to вместо .fromTo: на границе stages GSAP захватит текущее состояние
+  // (которое compressTl уже оставил), не «пробивая» его форсированным from-value.
+  // Так не появляется flicker, если compressTl ещё в анимации.
+  navInvertTl.to(".menu_overlay-content",
     { backgroundColor: "#040101", duration: 1, immediateRender: false },
     0);
 
-  navInvertTl.fromTo(".menu_control-bar *",
-    { color: "#000000" },
+  navInvertTl.to(".menu_control-bar *",
     { color: "#ffffff", duration: 1, immediateRender: false },
     0);
 
-  navInvertTl.fromTo(".nav-btm, .nav-btm *",
-    { color: "#ffffff" },
+  navInvertTl.to(".nav-btm, .nav-btm *",
     { color: "#000000", duration: 1, immediateRender: false },
     0);
 
-  navInvertTl.fromTo(".nav-logo_img",
-    { filter: "invert(0)" },
+  navInvertTl.to(".nav-logo_img",
     { filter: "invert(1)", duration: 1, immediateRender: false },
     0);
 
-  navInvertTl.fromTo(".nav-icon",
-    { filter: "invert(1)" },
+  navInvertTl.to(".nav-icon",
     { filter: "invert(0)", duration: 1, immediateRender: false },
     0);
 
@@ -246,12 +246,6 @@ function bootNavScroll() {
   const menuBackdrop = document.querySelector(".menu_backdrop");
 
   if (menuBtn && menuPanel) {
-    // Границы скругления плашки .menu_overlay-content при клике по меню.
-    // Сейчас оба значения равны 1.5vw — фактически borderRadius не меняется.
-    // Оставлены константы и tween'ы, чтобы быстро поменять при необходимости.
-    const RADIUS_DEFAULT = "1.5vw";
-    const RADIUS_OPEN    = "1.5vw";
-
     // Единый timeline, в котором живут оба сценария (open / close).
     // Каждый новый клик убивает предыдущий → нет наложений и рваных переходов.
     let menuTl = null;
@@ -290,12 +284,6 @@ function bootNavScroll() {
         duration: 1.1,
         ease: "power2.out"
       }, dropdownPos);
-
-      menuTl.to(".menu_overlay-content", {
-        borderRadius: RADIUS_OPEN,
-        duration: 0.9,
-        ease: "power2.out"
-      }, "<");
 
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
@@ -336,18 +324,12 @@ function bootNavScroll() {
         onComplete: () => { menuOpen = false; }
       });
 
-      // ---- ШАГ 1: схлопывание дропдауна + радиус + бэкдроп (параллельно) ----
+      // ---- ШАГ 1: схлопывание дропдауна + бэкдроп (параллельно) ----
       menuTl.to(menuPanel, {
         height: 0,
         opacity: 0,
         duration: 0.75,
         ease: "power2.in"
-      }, 0);
-
-      menuTl.to(".menu_overlay-content", {
-        borderRadius: RADIUS_DEFAULT,
-        duration: 0.75,
-        ease: "power2.inOut"
       }, 0);
 
       if (menuBackdrop) {
@@ -412,12 +394,10 @@ function bootNavScroll() {
       if (e.key === "Escape" && menuOpen) closeMenu();
     });
 
-    // Клик по любой ссылке внутри меню — закрыть
-    const links = menuPanel.querySelectorAll(".nav_menu-link");
-    links.forEach(link => {
-      link.addEventListener("click", () => {
-        closeMenu();
-      });
+    // Клик по любой ссылке внутри меню — закрыть (event delegation).
+    // Один listener вместо N штук → дешевле и проще DOM tear-down.
+    menuPanel.addEventListener("click", (e) => {
+      if (e.target.closest(".nav_menu-link")) closeMenu();
     });
   }
 }
