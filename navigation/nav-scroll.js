@@ -98,36 +98,9 @@ function bootNavScroll() {
   //   - клик по меню «экстренно» форсит progress в 1.
   const compressTl = gsap.timeline({ paused: true });
 
-  compressTl.to(".menu_overlay-content", {
-    width: "28vw",
-    duration: 0.4
-  }, 0);
-
-  compressTl.to(".menu_control-bar", {
-    backgroundColor: "#ffffff",
-    duration: 0.4
-  }, 0);
-
-  compressTl.to(".menu_control-bar *", {
-    color: "#000000",
-    duration: 0.4
-  }, 0);
-
-  compressTl.to(".menu_profit-badge", {
-    width: "auto",
-    opacity: 1,
-    margin: "0 0.5vw",
-    duration: 0.4
-  }, 0);
-
-  compressTl.to(".nav-profit-item", {
-    opacity: 1,
-    y: 0,
-    duration: 1,
-    stagger: 0.15,
-    ease: "power2.out"
-  }, 0);
-
+  // --- ФАЗА 1 (позиция 0): лого спускается, .nav-btm уходит вниз на 1vw ---
+  // Эти изменения должны произойти ДО того, как плашка начнёт сжиматься,
+  // чтобы визуально лого «приземлилось», а уже потом ужималась навигация.
   compressTl.to(".nav-logo_img", {
     width: "62%",
     top: "4vw",
@@ -135,17 +108,56 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
+  compressTl.to(".nav-btm", {
+    marginTop: "1vw",
+    duration: 0.4,
+    ease: "power2.out"
+  }, 0);
+
+  // --- ФАЗА 2 (позиция 0.5): плашка сжимается, контент перекрашивается ---
+  const P2 = 0.5;
+
+  compressTl.to(".menu_overlay-content", {
+    width: "28vw",
+    duration: 0.4
+  }, P2);
+
+  compressTl.to(".menu_control-bar", {
+    backgroundColor: "#ffffff",
+    duration: 0.4
+  }, P2);
+
+  compressTl.to(".menu_control-bar *", {
+    color: "#000000",
+    duration: 0.4
+  }, P2);
+
+  compressTl.to(".menu_profit-badge", {
+    width: "auto",
+    opacity: 1,
+    margin: "0 0.5vw",
+    duration: 0.4
+  }, P2);
+
+  compressTl.to(".nav-profit-item", {
+    opacity: 1,
+    y: 0,
+    duration: 1,
+    stagger: 0.15,
+    ease: "power2.out"
+  }, P2);
+
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
     duration: 0.4
-  }, 0);
+  }, P2);
 
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     width: 0,
     height: 0,
     opacity: 0,
     duration: 0.4
-  }, 0);
+  }, P2);
 
 
   // ==========================================
