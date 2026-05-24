@@ -1,26 +1,17 @@
-/* ============================================================
-   NEED.VISION — Кастомные стили, связанные со скриптами
-   ============================================================
-   Эти стили нужны, чтобы некоторые скрипты корректно отрисовали
-   свои эффекты. Можно либо:
-     - оставить их в Webflow Head Code как <style>,
-     - либо подключить файлом через CDN (см. README).
-   ============================================================ */
+/* Кастомные стили под скрипты. */
 
 
-/* ---- 1. Размытая «корочка» под навигацией ---- */
+/* 1. Размытая «корочка» под навигацией */
 .nav-blur-bg {
-  /* Деликатное размытие */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 
-  /* Плавная маска с промежуточными шагами */
   -webkit-mask-image: linear-gradient(to bottom,
       black 0%,
-      black 60%,                     /* Полное размытие до 60% высоты */
+      black 60%,
       rgba(0, 0, 0, 0.6) 80%,
       rgba(0, 0, 0, 0.2) 92%,
-      transparent 100%               /* Полное исчезновение в самом конце */
+      transparent 100%
   );
   mask-image: linear-gradient(to bottom,
       black 0%,
@@ -31,34 +22,27 @@
 }
 
 
-/* ---- 2. Эффект «фонарика» в секции partner ---- */
-/* Используется скриптом sections/partner-spotlight.js — он двигает
-   CSS-переменные --mouse-x / --mouse-y. */
+/* 2. Фонарик в секции partner.
+   sections/partner-spotlight.js двигает --mouse-x / --mouse-y. */
 .spotlight-overlay {
   pointer-events: none;
 
-  /* Дефолтная позиция (по центру) */
   --mouse-x: 50%;
   --mouse-y: 50%;
-
-  /* РАЗМЕР ФОНАРИКА */
   --spotlight-size: 60vw;
 
-  /* Градиент. Полутень растянута дальше к краю — мягкий, широкий ореол. */
   background: radial-gradient(circle var(--spotlight-size) at var(--mouse-x) var(--mouse-y),
-      rgba(0, 0, 0, 0) 0%,           /* Центр — прозрачный */
-      rgba(0, 0, 0, 0.85) 50%,       /* Полутень */
-      rgba(0, 0, 0, 1) 88%           /* Темнота */
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.85) 50%,
+      rgba(0, 0, 0, 1) 88%
   );
 }
 
 
-/* ---- 3. Размеры карточек в Swiper-версии team-слайдера ---- */
-/* Используется со sliders/team-slider-swiper.js. Если активна
-   кастомная версия (sliders/team-slider.js), этот блок не нужен. */
+/* 3. Swiper-версия team-слайдера. Не используется если активна кастомная
+   sliders/team-slider.js. */
 .swiper-slide {
   transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-  /* Если в Webflow слетят размеры — жёстко фиксируются здесь */
   width: 6vw !important;
   height: 8vw !important;
   opacity: 0.6;
@@ -81,28 +65,19 @@
 }
 
 
-/* ---- 4. Бургер-иконка в .nav-menu (морф в крестик при открытом меню) ---- */
-/* Embed внутри .nav-menu:
+/* 4. Бургер-иконка в .nav-menu, морф в крестик.
+   Embed внутри .nav-menu:
      <div class="menu-icon">
        <span class="menu-icon__bar menu-icon__bar--top"></span>
        <span class="menu-icon__bar menu-icon__bar--bot"></span>
      </div>
-   navigation/nav-scroll.js тогглит класс .is-open на .menu-icon
-   в openMenu / closeMenu. Цвет наследуется через currentColor — ровно
-   тот же поток, что красит .menu_control-bar * на скролле/над .stages.
+   navigation/nav-scroll.js тогглит .is-open. Цвет через currentColor —
+   наследуется от .menu_control-bar.
 
-   Геометрия:
-   - контейнер 2vw × 0.65vw
-   - бургер (закрытое): высота как «знак» = 0.4vw (полоски при top/bottom
-     0.125vw → центрированы в 0.65vw, расстояние верх-низ ровно 0.4vw)
-   - крестик (открытое): полоски НЕ меняют длину (остаются 2vw, как
-     в бургере). Просто уезжают в центр (translateY ±0.165vw) и
-     поворачиваются на ±45° → две полные полоски «крест-накрест».
-     X визуально выходит за высоту контейнера (~1.41vw bbox), но это
-     ок — крестик читается как «полные линии скрещены», а закрытие
-     обратно идёт чисто translate+rotate, без неприятного growth-эффекта
-     от scaleX, который был раньше.
-   - толщина 0.07vw в обоих состояниях. */
+   Геометрия: контейнер 1.4vw × 0.65vw. В закрытом полоски при top/bottom
+   0.125vw → расстояние от верха до низа ровно 0.4vw. В открытом обе
+   уезжают в центр (translateY ±0.165vw) и поворачиваются на ±30° —
+   крест без изменения длины. Толщина 0.07vw в обоих состояниях. */
 .menu-icon {
   position: relative;
   width: 1.4vw;
@@ -122,13 +97,10 @@
   transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
   will-change: transform;
 }
-/* Полоски в закрытом — у краёв 0.4vw-высокого «знака» внутри 0.65vw-контейнера. */
 .menu-icon__bar--top { top: 0.125vw; }
 .menu-icon__bar--bot { bottom: 0.125vw; }
 
-/* Открытое: сдвиг в центр + поворот ±40°. Длина не меняется.
-   ±40° (вместо стандартных ±45°) даёт чуть более «узкий» крестик —
-   ближе к пропорциям исходной X-иконки. */
+/* Открытое: в центр + ±30° (более «узкий» крест) */
 .menu-icon.is-open .menu-icon__bar--top {
   transform: translateY(0.165vw) rotate(30deg);
 }
@@ -137,14 +109,11 @@
 }
 
 
-/* ---- 5. Страница /cases — state-active на .case-row + reveal preview-img ---- */
-/* Поведение: одна строка активна одновременно. Hover на новую строку =
-   она становится активной (заливается оранжевым), старая теряет
-   активность. Дефолтно активна первая (JS вызывает setActive(0) при init).
-
-   Заливка реализована через ::before-псевдоэлемент с scaleX(0→1) +
-   transform-origin:left → каждое наведение визуально «заполняет» строку
-   слева направо. GPU-only, без layout reflow. */
+/* 5. Страница /cases — активная строка + заливка.
+   Одна .case-row активна одновременно (по умолчанию первая).
+   Hover → она становится активной, старая теряет.
+   Заливка через ::before scaleX(0→1) с transform-origin:left —
+   GPU-only, без reflow. */
 .case-row {
   position: relative;
   background-color: transparent;
@@ -163,10 +132,7 @@
   pointer-events: none;
 }
 /* Контент над заливкой */
-.case-row > * {
-  position: relative;
-  z-index: 1;
-}
+.case-row > * { position: relative; z-index: 1; }
 
 .case-row.is-active {
   color: #000000;
@@ -182,26 +148,19 @@
   filter: brightness(0);
 }
 
-/* Стрелка: в Webflow стоит display:none — переопределяем на block,
-   а саму «невидимость» делаем через width:0 (его уже можно анимировать).
-   Filter на стрелку НЕ навешиваем — оставляем оригинальный цвет иконки. */
+/* Стрелка: в Webflow стоит display:none. Держим block постоянно,
+   «невидимость» через width:0 → 1vw (его можно анимировать). */
 .case-row_arrow {
   display: block !important;
   width: 0vw;
   overflow: hidden;
   transition: width 0.3s ease;
 }
-.case-row.is-active .case-row_arrow {
-  width: 1vw;
-}
+.case-row.is-active .case-row_arrow { width: 1vw; }
 
-/* Preview-картинка в сайдбаре. Реализует «заливку снизу вверх»
-   через clip-path: inset(top right bottom left).
-   - inset(100% 0 0 0) — top inset 100%, видимая область 0 высоты,
-     прижата к низу → картинка полностью скрыта.
-   - inset(0% 0 0 0) — top inset 0, видимая область во всю высоту
-     → картинка полностью видна.
-   Анимация top-inset от 100% к 0% = картинка раскрывается снизу вверх. */
+/* Preview в сайдбаре: заливка снизу вверх через clip-path inset.
+   inset(100% 0 0 0) = скрыто, inset(0% 0 0 0) = полностью видно.
+   Top-inset 100 → 0 = раскрывается снизу вверх. */
 .cases-sidebar_display {
   position: relative;
   overflow: hidden;

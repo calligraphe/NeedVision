@@ -1,54 +1,21 @@
 /**
- * NEED.VISION — Темизация плавающей CTA-кнопки (.nav-cta__btn)
- * ============================================================
+ * Тема плавающей CTA-кнопки (.nav-cta__btn) по секциям:
+ *   dark > orange > white (приоритет)
  *
- * Что делает: меняет фон/цвет плавающей CTA-кнопки в зависимости от
- *             секции, над которой она «висит», и убирает её в футере.
+ * Каждый ScrollTrigger только дёргает флаг — applyTheme() через rAF
+ * вычисляет активную тему и применяет одним tween'ом. Так не дерутся
+ * параллельные tween'ы за один и тот же color/bg.
  *
- * Темы и приоритет (старшая выигрывает):
- *   1. DARK   — над `.stages` (чёрный фон, белый текст)
- *   2. ORANGE — над `.is-orange-nav` секциями (оранжевый фон, белый)
- *   3. WHITE  — дефолт (белый фон, чёрный текст)
- *
- * Архитектура:
- *   - Каждый ScrollTrigger только ОБНОВЛЯЕТ булев флаг (без своих tween'ов).
- *   - Один централизованный applyTheme() вычисляет активную тему по флагам
- *     и применяет её ОДНИМ tween'ом на .nav-cta__btn. Цвет потомков
- *     наследуется автоматически через CSS color inheritance.
- *   - applyTheme дебаунсится через rAF — несколько одновременных onToggle
- *     (например, выход из orange + вход в stages) схлопываются в один tween.
- *   - currentTheme-гард не даёт повторно играть ту же тему.
- *
- * Это снимает три проблемы старой версии:
- *   - гонка discrete onEnter и scrub-tween за одни и те же свойства,
- *   - рассинхронизация двух раздельных scrub-таймлайнов (bg ≠ color),
- *   - «застревание» в чужой теме после быстрого скролла.
- *
- * Зависимости:
- *   - GSAP 3.12.x
- *   - ScrollTrigger
- *
- * Webflow селекторы:
- *   - .nav-cta__btn          — сама плавающая кнопка
- *   - .is-orange-nav         — класс-маркер оранжевых секций
- *   - .stages                — тёмная секция
- *   - .footer / footer       — футер (триггер скрытия)
- *
- * Атрибуты в Webflow:
- *   - Добавь класс `is-orange-nav` секции с оранжевым фоном — кнопка
- *     автоматически перекрасится в оранжевый, пока эта секция «под» ней.
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/navigation/nav-cta-invert.js"></script>
+ * В футере кнопка независимо уезжает вниз и гаснет.
  */
 
 function bootNavCtaInvert() {
   if (typeof gsap === "undefined") {
-    console.warn("[Need Vision] nav-cta-invert.js: GSAP не загружен");
+    console.warn("nav-cta-invert.js: GSAP не загружен");
     return;
   }
   if (typeof ScrollTrigger === "undefined") {
-    console.warn("[Need Vision] nav-cta-invert.js: ScrollTrigger не загружен");
+    console.warn("nav-cta-invert.js: ScrollTrigger не загружен");
     return;
   }
 
@@ -57,25 +24,20 @@ function bootNavCtaInvert() {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // ==========================================
-  // ТЕМЫ
-  // ==========================================
   const THEMES = {
     white:  { bg: "#ffffff", text: "#000000" },
     orange: { bg: "#FF6038", text: "#ffffff" },
     dark:   { bg: "#040101", text: "#ffffff" }
   };
 
-  // Синхронизируем стартовое состояние с CSS, чтобы GSAP знал точку «from».
+  // Синхронизируем стартовое с CSS, чтобы GSAP знал from-value
   gsap.set(".nav-cta__btn", {
     backgroundColor: THEMES.white.bg,
     color: THEMES.white.text
   });
 
-  // ==========================================
-  // СОСТОЯНИЕ
-  // ==========================================
-  // Используем Set вместо булки на случай перекрывающихся orange-секций.
+  // Set для orange — на случай перекрывающихся секций.
+  // Bool для stages — она одна.
   const activeOrange = new Set();
   let isOverStages = false;
   let currentTheme = "white";
@@ -89,8 +51,7 @@ function bootNavCtaInvert() {
     currentTheme = next;
 
     const t = THEMES[next];
-    // Один tween на .nav-cta__btn. backgroundColor + color сразу. Потомки
-    // (.marquee-wrapper и текстовые div'ы) наследуют color через CSS.
+    // Один tween. color наследуется детьми через CSS, без * селектора.
     gsap.to(".nav-cta__btn", {
       backgroundColor: t.bg,
       color: t.text,
@@ -100,8 +61,8 @@ function bootNavCtaInvert() {
     });
   }
 
-  // rAF-дебаунс: при выходе из orange + входе в stages одним кадром
-  // получим два onToggle подряд → схлопнем в один applyTheme.
+  // rAF-дебаунс: близкие onToggle (выход из orange + вход в stages)
+  // схлопываются в один applyTheme.
   let pending = false;
   function scheduleApply() {
     if (pending) return;
@@ -112,9 +73,6 @@ function bootNavCtaInvert() {
     });
   }
 
-  // ==========================================
-  // ОРАНЖЕВЫЕ СЕКЦИИ
-  // ==========================================
   const orangeSections = gsap.utils.toArray(".is-orange-nav");
   orangeSections.forEach(section => {
     ScrollTrigger.create({
@@ -129,11 +87,6 @@ function bootNavCtaInvert() {
     });
   });
 
-  // ==========================================
-  // СЕКЦИЯ .stages — тёмная тема
-  // ==========================================
-  // Пороги подобраны так, чтобы тема включалась пока кнопка визуально
-  // находится над секцией (кнопка прижата к bottom 2.2vw).
   const stagesSection = document.querySelector(".stages");
   if (stagesSection) {
     ScrollTrigger.create({
@@ -147,10 +100,7 @@ function bootNavCtaInvert() {
     });
   }
 
-  // ==========================================
-  // ИСЧЕЗНОВЕНИЕ В ФУТЕРЕ
-  // ==========================================
-  // Независимая от темы анимация — двигает y/opacity, не трогает цвета.
+  // В футере — уезжаем вниз. Независимо от темы, только y/opacity.
   const footerEl = document.querySelector(".footer") || document.querySelector("footer");
   if (footerEl) {
     gsap.to(".nav-cta__btn", {

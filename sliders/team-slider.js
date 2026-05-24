@@ -57,10 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const nextBtn = document.querySelector('.team_nav-btn');
   const dots = gsap.utils.toArray('.team_dot');
 
-  // ---- Кэш DOM-узлов, которые дёргаются на каждом updateSlider/updateTexts ----
-  // Раньше querySelector на эти элементы вызывался по N раз за свич слайда —
-  // для текстов это 5 запросов + 1 querySelectorAll, для headers — N штук.
-  // Кешируем один раз при init: дальше просто индексируем массивы.
+  // Кэш DOM на init — раньше querySelector летел на каждом свиче слайда.
   const slideHeaders = slides.map(s => s.querySelector('.team_member-header'));
   const dotFulls = dots.map(d => d.querySelector('.team_dot-full'));
 
@@ -71,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sign:  document.querySelector('.team-sign')
   };
 
-  // Номер слайда пишется во ВТОРУЮ .label-wrapper внутри .team_info-meta.
+  // Номер слайда — во второй .label-wrapper внутри .team_info-meta
   const metaLabels = document.querySelectorAll('.team_info-meta .label-wrapper');
   const numTarget = metaLabels.length > 1
     ? metaLabels[1].querySelectorAll('.label-text')[1]
@@ -296,7 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const newDesc = activeSlide.querySelector('.team_data-description')?.innerHTML || '';
     const newSignSrc = activeSlide.querySelector('.team_data-sign')?.getAttribute('src') || '';
 
-    // textTargets / numTarget закэшированы при init — без DOM-запросов на каждом тике.
     const targetRole = textTargets.role;
     const targetQuote = textTargets.quote;
     const targetDesc = textTargets.desc;

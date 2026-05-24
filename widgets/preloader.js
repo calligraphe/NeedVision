@@ -1,42 +1,15 @@
 /**
- * NEED.VISION — Прелоудер с циклом 9 иконок
- * ==========================================
+ * Прелоудер: цикл 9 иконок, гасим на window.load.
  *
- * Что делает:
- *   1. ПЕРВАЯ ЗАГРУЗКА: показывает `.preloader` сразу при boot'е, крутит
- *      9 иконок (`.preloader_icon._1` … `._9`) циклом до тех пор, пока
- *      не сработает `window.load` (все картинки/шрифты/ресурсы загружены).
- *      Затем плавно гасит прозрачность и снимает блокировку UI.
+ * При клике по внутренней ссылке показываем заново и переходим через
+ * NAV_DELAY_MS. На новой странице подхватится опять.
  *
- *   2. ПЕРЕХОДЫ МЕЖДУ СТРАНИЦАМИ: перехватывает клики по внутренним
- *      ссылкам (same-origin, основной клик, без модификаторов, не _blank,
- *      не якорь), показывает прелоудер с короткой задержкой, потом
- *      делает `location.href = ...`. На новой странице прелоудер
- *      подхватится снова — continuous loading experience.
+ * Пока виден — html/body overflow:hidden, скролл и клики заблокированы
+ * (z-index 9999 на .preloader из Webflow CSS).
  *
- *   3. Пока прелоудер виден — html/body overflow:hidden (нет скролла),
- *      сам прелоудер имеет z-index 9999 (по CSS) → клики не доходят
- *      до контента под ним.
- *
- * Перф-заметки:
- *   - Цикл иконок — через requestAnimationFrame с timestamp-чеком,
- *     а не setInterval (rAF синхронизирован с refresh rate, нет drift).
- *   - opacity-toggle для смены иконок — composite-only, без reflow.
- *   - MIN_DISPLAY_MS защищает от «мигания» прелоудера на быстрых
- *     соединениях, когда window.load приходит за 100мс.
- *
- * Зависимости:
- *   - GSAP 3.12.x (для плавного fade-out; есть fallback на CSS-transition)
- *
- * Webflow селекторы:
- *   - .preloader              — корневой контейнер (CSS: display:none, z:9999)
- *   - .preloader_container    — внутренний центрирующий слой
- *   - .preloader_icon         — иконка цикла (9 штук, _1 ... _9)
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/widgets/preloader.js"></script>
- *   (грузить РАНЬШЕ остальных скриптов в footer-code, чтобы прелоудер
- *    появился до старта остальной анимации)
+ * Цикл через rAF (без drift от setInterval). MIN_DISPLAY_MS защищает
+ * от «мигания» если ресурсы загрузились раньше чем юзер увидит.
+ * GSAP только для fade-out — есть CSS-fallback.
  */
 
 function bootPreloader() {
@@ -46,31 +19,23 @@ function bootPreloader() {
   const icons = Array.from(preloader.querySelectorAll(".preloader_icon"));
   if (icons.length === 0) return;
 
-  // ---- Тайминги ----
-  // Подобрано «премиально»: цикл размереннее, fade длиннее и мягче,
-  // минимальная видимость даёт юзеру успеть «прочитать» прелоудер
-  // даже на быстром соединении.
-  const FRAME_MS       = 135;    // длительность одного кадра цикла (~7.4 fps)
-  const MIN_DISPLAY_MS = 1000;   // минимум видимости — premium dwell time
-  const FADE_DURATION  = 1.0;    // длинный плавный fade-out
-  const NAV_DELAY_MS   = 320;    // пауза перед location.href — успевает войти fade-in
+  const FRAME_MS       = 135;    // кадр цикла, ~7 fps
+  const MIN_DISPLAY_MS = 1000;   // минимум видимости
+  const FADE_DURATION  = 1.0;    // длительность fade-out
+  const NAV_DELAY_MS   = 320;    // пауза перед location.href
 
-  // ---- Состояние ----
   let cycleRunning = false;
   let currentIdx   = 0;
   let lastFrameAt  = 0;
   let shownAt      = 0;
   let navigating   = false;
 
-  // Стартовое: первая иконка видна, остальные прозрачны.
+  // Стартовое: первая видна, остальные прозрачны.
   icons.forEach((icon, i) => {
     icon.style.opacity = i === 0 ? "1" : "0";
     icon.style.willChange = "opacity";
   });
 
-  // ==========================================
-  // LOCK / UNLOCK UI
-  // ==========================================
   function lockUI() {
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
@@ -80,9 +45,6 @@ function bootPreloader() {
     document.body.style.overflow = "";
   }
 
-  // ==========================================
-  // ЦИКЛ ИКОНОК (rAF)
-  // ==========================================
   function tick(now) {
     if (!cycleRunning) return;
     if (now - lastFrameAt >= FRAME_MS) {
@@ -103,9 +65,6 @@ function bootPreloader() {
     cycleRunning = false;
   }
 
-  // ==========================================
-  // SHOW / HIDE
-  // ==========================================
   function showPreloader() {
     preloader.style.display = "flex";
     preloader.style.opacity = "1";
@@ -116,7 +75,7 @@ function bootPreloader() {
   }
 
   function hidePreloader() {
-    if (navigating) return;  // если уходим на другую страницу — не гасим
+    if (navigating) return;  // уходим на другую страницу — не гасим
     const elapsed = performance.now() - shownAt;
     const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
 
@@ -128,8 +87,6 @@ function bootPreloader() {
       };
 
       if (typeof gsap !== "undefined") {
-        // expo.out — premium-кривая: лёгкий старт, долгое мягкое
-        // затухание. Чувствуется «дороже» чем power2.out.
         gsap.to(preloader, {
           opacity: 0,
           duration: FADE_DURATION,
@@ -137,7 +94,6 @@ function bootPreloader() {
           onComplete: onDone
         });
       } else {
-        // Fallback без GSAP — cubic-bezier близкий к expo.out
         preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
         preloader.style.opacity = "0";
         setTimeout(onDone, FADE_DURATION * 1000);
@@ -145,24 +101,17 @@ function bootPreloader() {
     }, wait);
   }
 
-  // ==========================================
-  // ПЕРВАЯ ЗАГРУЗКА
-  // ==========================================
+  // Первая загрузка
   showPreloader();
 
   if (document.readyState === "complete") {
-    // Все ресурсы уже подгружены к моменту запуска скрипта.
     requestAnimationFrame(hidePreloader);
   } else {
     window.addEventListener("load", hidePreloader, { once: true });
   }
 
-  // ==========================================
-  // ПЕРЕХОДЫ МЕЖДУ СТРАНИЦАМИ
-  // ==========================================
-  // Перехватываем клики по same-origin ссылкам и показываем прелоудер
-  // перед navigate. Внешние ссылки, mailto/tel, якоря, _blank,
-  // ctrl/cmd-клики (новая вкладка) — пропускаем как обычно.
+  // Клики по внутренним ссылкам — переход через прелоудер.
+  // Пропускаем якоря, mailto/tel, _blank, ctrl/cmd-клики (новая вкладка).
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented) return;
     if (e.button !== 0) return;
@@ -181,7 +130,6 @@ function bootPreloader() {
     try { url = new URL(href, location.href); } catch { return; }
 
     if (url.origin !== location.origin) return;
-    // Якорь / тот же URL — не перехватываем (страница не меняется).
     if (url.pathname === location.pathname && url.search === location.search) return;
 
     e.preventDefault();

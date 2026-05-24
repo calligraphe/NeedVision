@@ -1,37 +1,14 @@
 /**
- * NEED.VISION — Активное состояние на странице /cases
- * ====================================================
+ * Страница /cases — активная строка + превью в сайдбаре.
  *
- * Что делает: одна `.case-row` в любой момент времени помечена классом
- * `.is-active` (по умолчанию — первая). На mouseenter любой другой
- * строки переключаем active → старая теряет класс, новая получает.
- *
- * Визуальный эффект «заливения каждый раз»:
- *   1. Строка: ::before-псевдоэлемент с scaleX(0→1) из CSS — оранжевый
- *      заливает строку слева направо за 0.45s. Каждое переключение
- *      даёт новую анимацию заливки. (См. custom.css секция 5.)
- *   2. Сайдбар `.cases-sidebar_display`: при свиче active превью
- *      сначала «уходит» (clip-path inset top 0→100%), потом срабатывает
- *      свап src, потом «заливается» обратно (clip-path 100→0).
- *      Эффект «новая картинка наливается снизу вверх» на каждом hover.
- *
- * Зависимости:
- *   - GSAP 3.12.x
- *
- * Webflow селекторы:
- *   - .case-row              — строка кейса (hover-цель)
- *   - .case-row_preview-img  — превью-картинка (display:none, src-источник)
- *   - .cases-sidebar_display — контейнер где показывается превью
- *
- * Скрипт безопасен на других страницах — guard'ы на отсутствие узлов.
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sections/cases-page.js"></script>
+ * Одна .case-row в каждый момент имеет .is-active. По умолчанию первая.
+ * Hover другой → она становится активной (заливка через ::before в CSS),
+ * сайдбар-превью сменяется через hide→swap→reveal (clip-path inset).
  */
 
 function bootCasesPageHover() {
   if (typeof gsap === "undefined") {
-    console.warn("[Need Vision] cases-page.js: GSAP не загружен");
+    console.warn("cases-page.js: GSAP не загружен");
     return;
   }
 
@@ -39,13 +16,13 @@ function bootCasesPageHover() {
   const display = document.querySelector(".cases-sidebar_display");
   if (rows.length === 0 || !display) return;
 
-  // ---- Кэш src по строкам ----
+  // src каждой строки — кэш чтобы не дёргать querySelector на hover'е
   const rowSrcs = rows.map(row => {
     const img = row.querySelector(".case-row_preview-img");
     return img ? (img.getAttribute("src") || "") : "";
   });
 
-  // ---- Preview-img в display ----
+  // Превью-img в сайдбаре — создаём один раз, переиспользуем
   let preview = display.querySelector(".cases-sidebar_preview");
   if (!preview) {
     preview = document.createElement("img");
@@ -54,7 +31,6 @@ function bootCasesPageHover() {
     display.appendChild(preview);
   }
 
-  // ---- Тайминги для сайдбар-свича ----
   const HIDE_DUR   = 0.3;
   const REVEAL_DUR = 0.5;
 
@@ -63,7 +39,7 @@ function bootCasesPageHover() {
   let switchTl   = null;
 
   // Свич превью с эффектом «заливения»: hide → swap → reveal.
-  // Первая отрисовка пропускает hide (превью изначально скрыта CSS-ом).
+  // Первая отрисовка пропускает hide (CSS уже держит inset 100%).
   function showPreview(src) {
     if (src === currentSrc) return;
     if (switchTl) switchTl.kill();
@@ -95,8 +71,6 @@ function bootCasesPageHover() {
     }
   }
 
-  // Переключение активной строки. Класс .is-active даёт CSS-заливку
-  // через ::before scaleX(0→1) + чёрный текст + видимую стрелку.
   function setActive(idx) {
     if (idx === activeIdx) return;
     activeIdx = idx;
@@ -107,13 +81,13 @@ function bootCasesPageHover() {
     if (src) showPreview(src);
   }
 
-  // ---- Default: первая строка горит ----
+  // По умолчанию активна первая
   setActive(0);
 
-  // ---- Hover любой строки → она становится активной ----
   rows.forEach((row, i) => {
     row.addEventListener("mouseenter", () => setActive(i));
   });
+  // mouseleave не обрабатываем — active остаётся до hover'а другой строки
 }
 
 if (document.readyState === "loading") {

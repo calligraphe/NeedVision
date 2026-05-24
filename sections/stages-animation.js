@@ -1,56 +1,25 @@
 /**
- * NEED.VISION — Анимация секции «Этапы»
- * =====================================
+ * Секция «Этапы»: три скролл-анимации.
  *
- * Что делает: три связанные анимации, привязанные к секции `.stages`:
- *
- *   1. СМЕНА ФОНА: при входе в секцию фонарик `.spotlight-overlay`
- *      гаснет, фон `.about-wrapper` плавно меняется на кремовый (#FFFBF2).
- *
- *   2. STAGES_IMG: каждое изображение `.stages_img` выезжает снизу,
- *      проявляется и расфокусируется (blur 12px → 0) при прокрутке.
- *
- *   3. БАРАБАННАЯ СМЕНА ТЕКСТОВ: текстовые блоки `.stages_text-wrapper`
- *      сменяют друг друга с эффектом «растворения в белом свечении»
- *      (через `text-shadow`, а не blur — нет артефактов на ретине).
- *      Параллельно переключается активная точка `.stages_dot-full` и
- *      номер этапа в `.stages_step-label`.
- *
- * Зависимости:
- *   - GSAP 3.12.x
- *   - ScrollTrigger
- *
- * Webflow селекторы:
- *   - .stages                — корневая секция (триггер всех таймлайнов)
- *   - .spotlight-overlay     — фонарик из partner-секции (тут гасится)
- *   - .about-wrapper         — обёртка about-блока (меняет фон)
- *   - .stages_img            — отдельные изображения этапов
- *   - .stages_text-wrapper   — текстовые блоки этапов (по одному видно)
- *   - .stages_title          — заголовок этапа
- *   - .stages_subtitle       — подзаголовок этапа
- *   - .stages_p-text         — параграф этапа
- *   - .stages_step-label     — лейбл «ЭТАП N» (текст подменяется)
- *   - .stages_pagination     — контейнер точек (обеспечиваем opacity:1)
- *   - .stages_dot            — обёртка одной точки (внутри empty + full)
- *   - .stages_dot-empty      — пустая иконка (видна на НЕактивных)
- *   - .stages_dot-full       — заполненная иконка (видна на активной)
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sections/stages-animation.js"></script>
+ * 1. На входе фонарик .spotlight-overlay гаснет, .about-wrapper
+ *    меняет фон на кремовый.
+ * 2. Каждый .stages_img выезжает снизу, проявляется и расфокусируется
+ *    (blur 12 → 0).
+ * 3. Барабанная смена текстов .stages_text-wrapper через «белое свечение»
+ *    (text-shadow вместо blur — нет артефактов на ретине). Параллельно
+ *    переключаются точки .stages_dot-full/empty и лейбл этапа.
  */
 
 function bootStagesAnimation() {
-  // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
-    console.warn("[Need Vision] stages-animation.js: GSAP не загружен");
+    console.warn("stages-animation.js: GSAP не загружен");
     return;
   }
   if (typeof ScrollTrigger === "undefined") {
-    console.warn("[Need Vision] stages-animation.js: ScrollTrigger не загружен");
+    console.warn("stages-animation.js: ScrollTrigger не загружен");
     return;
   }
 
-  // ---- Проверка наличия секции ----
   const stagesSection = document.querySelector(".stages");
   if (!stagesSection) return;
 
@@ -157,13 +126,11 @@ function bootStagesAnimation() {
       }
     });
 
-    // Обеспечиваем видимость контейнера пагинации.
     const stagesPagination = document.querySelector(".stages_pagination");
 
-    // У каждой точки в Webflow висит data-w-id и On-Page-Load IX2-анимация,
-    // которая может сбрасывать opacity ПОСЛЕ нашего скрипта. Самый чистый
-    // способ — отвязать IX2 от этих элементов: убираем data-w-id, и Webflow
-    // больше не сможет их трогать. Тогда наш GSAP — единственный хозяин opacity.
+    // На точках висит Webflow IX2 (On-Page-Load), который сбрасывает
+    // opacity после нашего gsap.set. Снимаем data-w-id — IX2 их больше
+    // не видит, opacity полностью наш.
     const pagDots = [...dotsFull, ...dotsEmpty];
     if (stagesPagination) pagDots.push(stagesPagination);
     pagDots.forEach(el => el.removeAttribute("data-w-id"));
@@ -171,7 +138,7 @@ function bootStagesAnimation() {
     if (stagesPagination) {
       gsap.set(stagesPagination, { opacity: 1 });
     }
-    // Активная точка (индекс 0): full=1, empty=0; остальные — наоборот.
+    // Активная (0): full=1, empty=0. Остальные наоборот.
     if (dotsFull[0]) gsap.set(dotsFull[0], { opacity: 1 });
     if (dotsFull.length > 1) gsap.set(dotsFull.slice(1), { opacity: 0 });
     if (dotsEmpty[0]) gsap.set(dotsEmpty[0], { opacity: 0 });
@@ -186,8 +153,8 @@ function bootStagesAnimation() {
       }
     });
 
-    // Дублируем стартовое состояние ВНУТРИ таймлайна — scrub-рефреш
-    // ScrollTrigger'а иначе может ре-инициализировать tween'ы и сбить inline opacity.
+    // Дублируем стартовое внутри таймлайна — иначе scrub-рефреш
+    // ре-инициализирует tween'ы и сбивает inline opacity.
     if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1 }, 0);
     if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0 }, 0);
     if (dotsEmpty[0]) tlStages.set(dotsEmpty[0], { opacity: 0 }, 0);
@@ -271,8 +238,6 @@ function bootStagesAnimation() {
   }
 }
 
-// Универсальный запуск: если DOM ещё парсится — ждём, иначе стартуем сразу.
-// Это покрывает случай, когда Cloudflare отдаёт скрипт уже после DOMContentLoaded.
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bootStagesAnimation);
 } else {
