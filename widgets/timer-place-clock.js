@@ -1,16 +1,18 @@
 /**
- * NEED.VISION — Гео-город + динамические часы
- * ===========================================
+ * NEED.VISION — Город + часы по Батуми
+ * ====================================
  *
  * Что делает:
- *   1. Определяет город посетителя через HTTPS-сервис ipwho.is и выводит
- *      его в `.timer-place` ВЕРХНИМ РЕГИСТРОМ. Запасной вариант — "ALMATY".
- *   2. Показывает текущее локальное время в `.timer-time` в 12-часовом
- *      формате (`H:MM AM/PM`) и обновляет каждую минуту.
+ *   1. Жёстко ставит `.timer-place` = "BATUMI".
+ *   2. Показывает текущее время в Батуми (часовой пояс Asia/Tbilisi,
+ *      UTC+4 круглогодично, без перехода на летнее время) в формате
+ *      "H:MM AM/PM" в `.timer-time`. Обновляется раз в минуту.
+ *
+ * Никаких геолокаций, IP-API и локального времени браузера — даже если
+ * посетитель из Алматы, на сайте всегда будет «BATUMI» и батумское время.
  *
  * Зависимости:
- *   - нет (чистый JS, без GSAP)
- *   - сетевой API: https://ipwho.is/ (бесплатный, без ключа, HTTPS)
+ *   - нет (чистый JS, Intl.DateTimeFormat)
  *
  * Webflow селекторы:
  *   - .timer-place           — куда подставить название города
@@ -20,54 +22,46 @@
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/widgets/timer-place-clock.js"></script>
  */
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ---- Константы ----
-  const GEO_API_URL = "https://ipwho.is/";
-  const FALLBACK_CITY = "ALMATY";
+function bootTimerPlaceClock() {
+  const CITY = "BATUMI";
+  const TIMEZONE = "Asia/Tbilisi";
   const TIME_UPDATE_MS = 60000;
 
   // ==========================================
-  // 1. ОПРЕДЕЛЕНИЕ ТОЛЬКО ГОРОДА
+  // 1. ГОРОД — статично
   // ==========================================
-  const placeElement = document.querySelector('.timer-place');
-
+  const placeElement = document.querySelector(".timer-place");
   if (placeElement) {
-    fetch(GEO_API_URL)
-      .then(response => response.json())
-      .then(data => {
-        // ipwho.is возвращает { success: true, city: "...", ... } при удаче
-        if (data.success && data.city) {
-          placeElement.textContent = data.city.toUpperCase();
-        } else {
-          placeElement.textContent = FALLBACK_CITY;
-        }
-      })
-      .catch(() => {
-        placeElement.textContent = FALLBACK_CITY;
-      });
+    placeElement.textContent = CITY;
   }
 
   // ==========================================
-  // 2. ДИНАМИЧЕСКИЕ ЧАСЫ (12-часовой формат)
+  // 2. ЧАСЫ — Asia/Tbilisi через Intl.DateTimeFormat
   // ==========================================
-  const timeElement = document.querySelector('.timer-time');
+  const timeElement = document.querySelector(".timer-time");
+  if (!timeElement) return;
+
+  // Кэшируем форматтер — он тяжеловесный, не пересоздаём на каждый тик.
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
 
   function updateTime() {
-    if (!timeElement) return;
-
-    const now = new Date();
-    let hours = now.getHours();
-    const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-
-    // Переводим в 12-часовой формат
-    hours = hours % 12;
-    hours = hours ? hours : 12; // если 0 часов, ставим 12
-
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-    timeElement.textContent = `${hours}:${minutesStr} ${ampm}`;
+    // Intl выдаёт "4:45 PM" — приводим к нижнему регистру AM/PM ("4:45 pm"),
+    // т.к. визуально это лучше совпадает с дизайном (мелкие подписи).
+    const raw = formatter.format(new Date());
+    timeElement.textContent = raw.replace(/AM$/i, "am").replace(/PM$/i, "pm");
   }
 
   updateTime();
   setInterval(updateTime, TIME_UPDATE_MS);
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootTimerPlaceClock);
+} else {
+  bootTimerPlaceClock();
+}
