@@ -242,7 +242,7 @@ function bootNavScroll() {
   const menuBtn = document.querySelector(".nav-menu");
   const menuPanel = document.querySelector(".menu_dropdown-list");
   const menuTxt = document.querySelector(".nav-menu__txt");
-  const menuIcon = document.querySelector(".nav-menu__img");
+  const menuIcon = document.querySelector(".menu-icon");
   const menuBackdrop = document.querySelector(".menu_backdrop");
 
   if (menuBtn && menuPanel) {
@@ -306,13 +306,11 @@ function bootNavScroll() {
         });
       }
 
+      // Бургер → крестик через CSS-класс (transition в styles/custom.css).
+      // Никакого GSAP-tween на иконке: CSS-transform на GPU, без overhead'а.
       if (menuIcon) {
-        gsap.to(menuIcon, {
-          rotation: 45,
-          duration: 0.5,
-          ease: "power3.out",
-          overwrite: "auto"
-        });
+        menuIcon.classList.add("is-open");
+        menuIcon.setAttribute("aria-expanded", "true");
       }
     }
 
@@ -369,13 +367,10 @@ function bootNavScroll() {
         });
       }
 
+      // Крестик → бургер (тот же CSS-transition).
       if (menuIcon) {
-        gsap.to(menuIcon, {
-          rotation: 0,
-          duration: 0.5,
-          ease: "power3.out",
-          overwrite: "auto"
-        });
+        menuIcon.classList.remove("is-open");
+        menuIcon.setAttribute("aria-expanded", "false");
       }
     }
 

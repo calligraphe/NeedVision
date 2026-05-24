@@ -79,3 +79,42 @@
 .swiper-slide.swiper-slide-active .team_member-name {
   opacity: 1;
 }
+
+
+/* ---- 4. Бургер-иконка в .nav-menu (морф в крестик при открытом меню) ---- */
+/* Embed внутри .nav-menu:
+     <div class="menu-icon">
+       <span class="menu-icon__bar menu-icon__bar--top"></span>
+       <span class="menu-icon__bar menu-icon__bar--bot"></span>
+     </div>
+   navigation/nav-scroll.js тогглит класс .is-open на .menu-icon
+   в openMenu / closeMenu. Цвет наследуется через currentColor — ровно
+   тот же поток, что красит .menu_control-bar * на скролле/над .stages. */
+.menu-icon {
+  position: relative;
+  width: 2vw;
+  height: 1vw;
+  flex-shrink: 0;
+  display: inline-block;
+  color: inherit;
+  cursor: pointer;
+}
+.menu-icon__bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0.1vw;
+  background: currentColor;
+  transform-origin: center center;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  will-change: transform;
+}
+.menu-icon__bar--top { top: 0; }
+.menu-icon__bar--bot { bottom: 0; }
+
+.menu-icon.is-open .menu-icon__bar--top {
+  transform: translateY(0.45vw) rotate(45deg);
+}
+.menu-icon.is-open .menu-icon__bar--bot {
+  transform: translateY(-0.45vw) rotate(-45deg);
+}
