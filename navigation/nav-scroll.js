@@ -122,7 +122,7 @@ function bootNavScroll() {
   }, 0);
 
   compressTl.to(".nav-btm", {
-    marginTop: "0.7vw",
+    marginTop: "0.55vw",
     duration: 0.35,
     ease: "power2.out"
   }, 0);
