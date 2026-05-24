@@ -13,3 +13,4 @@
 # Local
 *.local
 .remember/
+.claude/
