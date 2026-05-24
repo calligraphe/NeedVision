@@ -105,7 +105,7 @@
    - толщина 0.07vw в обоих состояниях. */
 .menu-icon {
   position: relative;
-  width: 2vw;
+  width: 1.4vw;
   height: 0.65vw;
   flex-shrink: 0;
   display: inline-block;
@@ -183,16 +183,16 @@
 }
 
 /* Стрелка: в Webflow стоит display:none — переопределяем на block,
-   а саму «невидимость» делаем через width:0 (его уже можно анимировать). */
+   а саму «невидимость» делаем через width:0 (его уже можно анимировать).
+   Filter на стрелку НЕ навешиваем — оставляем оригинальный цвет иконки. */
 .case-row_arrow {
   display: block !important;
   width: 0vw;
   overflow: hidden;
-  transition: width 0.3s ease, filter 0.3s ease;
+  transition: width 0.3s ease;
 }
 .case-row.is-active .case-row_arrow {
   width: 1vw;
-  filter: brightness(0);
 }
 
 /* Preview-картинка в сайдбаре. Реализует «заливку снизу вверх»
