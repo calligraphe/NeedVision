@@ -98,20 +98,21 @@ function bootNavScroll() {
   //   - клик по меню «экстренно» форсит progress в 1.
   const compressTl = gsap.timeline({ paused: true });
 
-  // Все tween'ы стартуют в позиции 0 — едут параллельно, но с разной
-  // длительностью. Лого ВСЕГО ~0.25s → успевает «приземлиться» до того,
-  // как плашка завершит покраску. Этим лого не пересекается визуально
-  // с верхней частью на этапе её перекраса.
+  // ЛОГО и NAV-BTM стартуют в pos=0 — это «нижняя группа».
+  // Все изменения ВЕРХНЕЙ ЧАСТИ (плашка, текст, profit, инверсия иконок)
+  // отложены на TOP_DELAY → к моменту начала покраски плашки лого уже
+  // почти полностью «приземлилось» и не висит над ней визуально.
   //
-  //   t=0       t=0.25     t=0.35   t=0.5         t=1.1
-  //   ├─ ЛОГО ──┤
-  //   ├─ NAV-BTM (marginTop 0.7vw) ──┤
-  //   ├─ ОВЕРЛЕЙ (width + bg) ──────────┤
-  //   ├─ ТЕКСТ control-bar (color) ─────┤
-  //   ├─ PROFIT badge (width+opacity) ──┤
-  //   ├─ NAV-ICON (filter invert) ──┤
-  //   ├─ HIDE left/right/timer ─────┤
-  //   ├─ PROFIT items (stagger) ────────────────────────┤
+  //   t=0        t=0.25   t=0.35       t=TD            t=TD+0.5    t=TD+0.8+stagger
+  //   ├─ ЛОГО ───┤
+  //   ├─ NAV-BTM (marginTop 0.7vw) ────┤
+  //   ├─ HIDE icons/timer ┤
+  //                                    ├─ ОВЕРЛЕЙ (width + bg) ──────┤
+  //                                    ├─ ТЕКСТ control-bar (color) ─┤
+  //                                    ├─ PROFIT badge ──────────────┤
+  //                                    ├─ PROFIT items (stagger) ─────────────────┤
+  //                                    ├─ NAV-ICON (invert) ─────┤
+  const TOP_DELAY = 0.2;
 
   compressTl.to(".nav-logo_img", {
     width: "62%",
@@ -121,7 +122,7 @@ function bootNavScroll() {
   }, 0);
 
   compressTl.to(".nav-btm", {
-    marginTop: "1vw",
+    marginTop: "0.7vw",
     duration: 0.35,
     ease: "power2.out"
   }, 0);
@@ -131,13 +132,13 @@ function bootNavScroll() {
     backgroundColor: "#ffffff",
     duration: 0.5,
     ease: "power2.out"
-  }, 0);
+  }, TOP_DELAY);
 
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
     duration: 0.5,
     ease: "power2.out"
-  }, 0);
+  }, TOP_DELAY);
 
   compressTl.to(".menu_profit-badge", {
     width: "auto",
@@ -145,7 +146,7 @@ function bootNavScroll() {
     margin: "0 0.5vw",
     duration: 0.5,
     ease: "power2.out"
-  }, 0);
+  }, TOP_DELAY);
 
   compressTl.to(".nav-profit-item", {
     opacity: 1,
@@ -153,13 +154,13 @@ function bootNavScroll() {
     duration: 0.8,
     stagger: 0.1,
     ease: "power2.out"
-  }, 0);
+  }, TOP_DELAY);
 
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
     duration: 0.4,
     ease: "power2.out"
-  }, 0);
+  }, TOP_DELAY);
 
   // Иконки/таймер — плавный fade + одновременный коллапс высоты.
   // Высота уезжает в 0 параллельно с opacity, чтобы .nav_bar тоже
