@@ -268,38 +268,41 @@ function bootNavScroll() {
       menuTl = gsap.timeline();
 
       // ---- ШАГ 1 (опционально): визуальное сжатие плашки ----
+      // Длительность 0.95s + power2.inOut — мягкий растянутый переход
+      // 57vw → 29vw, не «дёрганый» как при коротком 0.6s.
       if (needsCompress) {
         menuTl.to(compressTl, {
           progress: 1,
-          duration: 0.6,
-          ease: "power3.inOut",
+          duration: 0.95,
+          ease: "power2.inOut",
           overwrite: true
         }, 0);
       }
 
       // ---- ШАГ 2: раскрытие дропдауна + радиус + бэкдроп ----
-      // Лёгкое перекрытие с компрессией (-0.12) — плавный переход без зазора.
-      const dropdownPos = needsCompress ? "-=0.12" : 0;
+      // Перекрытие с компрессией (-0.2) — последняя четверть сжатия
+      // и первая четверть раскрытия идут одновременно, переход цельный.
+      const dropdownPos = needsCompress ? "-=0.2" : 0;
 
       menuTl.to(menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 0.85,
-        ease: "expo.out"
+        duration: 1.1,
+        ease: "power2.out"
       }, dropdownPos);
 
       menuTl.to(".menu_overlay-content", {
         borderRadius: RADIUS_OPEN,
-        duration: 0.7,
-        ease: "power3.out"
+        duration: 0.9,
+        ease: "power2.out"
       }, "<");
 
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 1,
           pointerEvents: "auto",
-          duration: 0.7,
-          ease: "power3.out"
+          duration: 0.9,
+          ease: "power2.out"
         }, "<");
       }
 
@@ -337,36 +340,38 @@ function bootNavScroll() {
       menuTl.to(menuPanel, {
         height: 0,
         opacity: 0,
-        duration: 0.55,
-        ease: "expo.in"
+        duration: 0.75,
+        ease: "power2.in"
       }, 0);
 
       menuTl.to(".menu_overlay-content", {
         borderRadius: RADIUS_DEFAULT,
-        duration: 0.55,
-        ease: "power3.inOut"
+        duration: 0.75,
+        ease: "power2.inOut"
       }, 0);
 
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 0,
           pointerEvents: "none",
-          duration: 0.5,
-          ease: "power3.in"
+          duration: 0.7,
+          ease: "power2.in"
         }, 0);
       }
 
       // ---- ШАГ 2: возврат компрессии к scroll-state ----
-      // Если юзер у верха — плашка плавно «раскрывается обратно в дефолт».
+      // Если юзер у верха — плашка плавно «раскрывается обратно в дефолт»
+      // 29vw → 57vw за 0.95s power2.inOut (то же длительность, что и при
+      // открытии — закрытие ощущается как зеркало).
       // Если внизу — compressState.progress=1 → tween будет no-op.
-      // Лёгкое перекрытие с закрытием (-0.18), чтобы переход ощущался как
-      // один цельный жест, а не два рывка.
+      // Перекрытие с закрытием (-0.3): декомпрессия начинается, когда
+      // дропдаун ещё на половине пути — переход цельный.
       menuTl.to(compressTl, {
         progress: compressState.progress,
-        duration: 0.65,
-        ease: "power3.inOut",
+        duration: 0.95,
+        ease: "power2.inOut",
         overwrite: true
-      }, "-=0.18");
+      }, "-=0.3");
 
       // Иконка (CSS-class).
       if (menuIcon) {
