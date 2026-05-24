@@ -182,7 +182,12 @@
   filter: brightness(0);
 }
 
+/* Стрелка: в Webflow стоит display:none — переопределяем на block,
+   а саму «невидимость» делаем через width:0 (его уже можно анимировать). */
 .case-row_arrow {
+  display: block !important;
+  width: 0vw;
+  overflow: hidden;
   transition: width 0.3s ease, filter 0.3s ease;
 }
 .case-row.is-active .case-row_arrow {
