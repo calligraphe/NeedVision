@@ -1,36 +1,29 @@
 /**
- * NEED.VISION — Hover на странице /cases
- * =======================================
+ * NEED.VISION — Активное состояние на странице /cases
+ * ====================================================
  *
- * Что делает: при наведении на `.case-row` подменяет картинку в
- * `.cases-sidebar_display` на превью этой строки (`.case-row_preview-img`)
- * и анимирует «заливку снизу вверх» через clip-path: inset().
+ * Что делает: одна `.case-row` в любой момент времени помечена классом
+ * `.is-active` (по умолчанию — первая). На mouseenter любой другой
+ * строки переключаем active → старая теряет класс, новая получает.
  *
- * Сам hover-стиль строки (оранжевый фон, чёрный текст, видимая стрелка)
- * живёт в CSS (`styles/custom.css`, секция «5. Страница /cases»).
- * Этот скрипт нужен только для anim'а sidebar-картинки, т.к. CSS
- * не умеет «брать src из соседнего элемента».
- *
- * UX-нюанс с переходами между строками:
- *   На mouseleave пускаем hide НЕ сразу, а с задержкой HIDE_DELAY_MS.
- *   Если в течение этой задержки сработал mouseenter на другую строку —
- *   отменяем hide и просто свапаем src + продолжаем reveal'ить.
- *   Это убирает «миг» когда между строками картинка успевала спрятаться
- *   и тут же открыться обратно.
+ * Визуальный эффект «заливения каждый раз»:
+ *   1. Строка: ::before-псевдоэлемент с scaleX(0→1) из CSS — оранжевый
+ *      заливает строку слева направо за 0.45s. Каждое переключение
+ *      даёт новую анимацию заливки. (См. custom.css секция 5.)
+ *   2. Сайдбар `.cases-sidebar_display`: при свиче active превью
+ *      сначала «уходит» (clip-path inset top 0→100%), потом срабатывает
+ *      свап src, потом «заливается» обратно (clip-path 100→0).
+ *      Эффект «новая картинка наливается снизу вверх» на каждом hover.
  *
  * Зависимости:
  *   - GSAP 3.12.x
  *
  * Webflow селекторы:
- *   - .case-row              — строка кейса (link, hover-цель)
- *   - .case-row_preview-img  — превью-картинка (display:none в CSS, нужна
- *                              только как источник src для сайдбара)
+ *   - .case-row              — строка кейса (hover-цель)
+ *   - .case-row_preview-img  — превью-картинка (display:none, src-источник)
  *   - .cases-sidebar_display — контейнер где показывается превью
- *                              (css: position:relative + overflow:hidden
- *                              добавлены в custom.css)
  *
- * Скрипт безопасен на других страницах — если нет .case-row или
- * .cases-sidebar_display, молча возвращается.
+ * Скрипт безопасен на других страницах — guard'ы на отсутствие узлов.
  *
  * Подключение:
  *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sections/cases-page.js"></script>
@@ -46,13 +39,13 @@ function bootCasesPageHover() {
   const display = document.querySelector(".cases-sidebar_display");
   if (rows.length === 0 || !display) return;
 
-  // ---- Кэш src по строкам (querySelector один раз при init) ----
+  // ---- Кэш src по строкам ----
   const rowSrcs = rows.map(row => {
     const img = row.querySelector(".case-row_preview-img");
     return img ? (img.getAttribute("src") || "") : "";
   });
 
-  // ---- Preview-img внутри display (создаём один раз, переиспользуем) ----
+  // ---- Preview-img в display ----
   let preview = display.querySelector(".cases-sidebar_preview");
   if (!preview) {
     preview = document.createElement("img");
@@ -61,46 +54,65 @@ function bootCasesPageHover() {
     display.appendChild(preview);
   }
 
-  // ---- Тайминги ----
-  const REVEAL_DUR    = 0.55;   // секунд — раскрытие снизу вверх
-  const HIDE_DUR      = 0.4;    // секунд — обратное схлопывание
-  const HIDE_DELAY_MS = 100;    // даём шанс mouseenter другой строки перехватить
+  // ---- Тайминги для сайдбар-свича ----
+  const HIDE_DUR   = 0.3;
+  const REVEAL_DUR = 0.5;
 
   let currentSrc = null;
-  let hideTimer  = null;
+  let activeIdx  = -1;
+  let switchTl   = null;
 
-  function reveal(src) {
-    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-    if (src && src !== currentSrc) {
+  // Свич превью с эффектом «заливения»: hide → swap → reveal.
+  // Первая отрисовка пропускает hide (превью изначально скрыта CSS-ом).
+  function showPreview(src) {
+    if (src === currentSrc) return;
+    if (switchTl) switchTl.kill();
+    switchTl = gsap.timeline();
+
+    if (currentSrc === null) {
       preview.src = src;
       currentSrc = src;
-    }
-    gsap.to(preview, {
-      clipPath: "inset(0% 0 0 0)",
-      duration: REVEAL_DUR,
-      ease: "power2.out",
-      overwrite: "auto"
-    });
-  }
-
-  function scheduleHide() {
-    if (hideTimer) clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => {
-      hideTimer = null;
-      gsap.to(preview, {
+      switchTl.to(preview, {
+        clipPath: "inset(0% 0 0 0)",
+        duration: REVEAL_DUR,
+        ease: "power2.out"
+      });
+    } else {
+      switchTl.to(preview, {
         clipPath: "inset(100% 0 0 0)",
         duration: HIDE_DUR,
-        ease: "power2.in",
-        overwrite: "auto"
+        ease: "power2.in"
       });
-    }, HIDE_DELAY_MS);
+      switchTl.call(() => {
+        preview.src = src;
+        currentSrc = src;
+      });
+      switchTl.to(preview, {
+        clipPath: "inset(0% 0 0 0)",
+        duration: REVEAL_DUR,
+        ease: "power2.out"
+      });
+    }
   }
 
+  // Переключение активной строки. Класс .is-active даёт CSS-заливку
+  // через ::before scaleX(0→1) + чёрный текст + видимую стрелку.
+  function setActive(idx) {
+    if (idx === activeIdx) return;
+    activeIdx = idx;
+    rows.forEach((row, i) => {
+      row.classList.toggle("is-active", i === idx);
+    });
+    const src = rowSrcs[idx];
+    if (src) showPreview(src);
+  }
+
+  // ---- Default: первая строка горит ----
+  setActive(0);
+
+  // ---- Hover любой строки → она становится активной ----
   rows.forEach((row, i) => {
-    const src = rowSrcs[i];
-    if (!src) return;
-    row.addEventListener("mouseenter", () => reveal(src));
-    row.addEventListener("mouseleave", scheduleHide);
+    row.addEventListener("mouseenter", () => setActive(i));
   });
 }
 

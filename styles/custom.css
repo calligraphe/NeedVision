@@ -137,32 +137,55 @@
 }
 
 
-/* ---- 5. Страница /cases — hover на .case-row + reveal preview-img ---- */
-/* Hover-эффект сделан на CSS (transition 0.3s ease):
-   - bg #FF6038, цвет текста и стрелки #000
-   - .case-row_logo инвертируется через filter:brightness(0)
-   - .case-row_arrow раскрывается по ширине (0vw → 1vw),
-     т.к. в исходной CSS у неё width:0 (display:none анимировать нельзя). */
+/* ---- 5. Страница /cases — state-active на .case-row + reveal preview-img ---- */
+/* Поведение: одна строка активна одновременно. Hover на новую строку =
+   она становится активной (заливается оранжевым), старая теряет
+   активность. Дефолтно активна первая (JS вызывает setActive(0) при init).
+
+   Заливка реализована через ::before-псевдоэлемент с scaleX(0→1) +
+   transform-origin:left → каждое наведение визуально «заполняет» строку
+   слева направо. GPU-only, без layout reflow. */
 .case-row {
+  position: relative;
   background-color: transparent;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow: hidden;
+  transition: color 0.3s ease;
 }
-.case-row:hover {
-  background-color: #FF6038;
+.case-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #FF6038;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+/* Контент над заливкой */
+.case-row > * {
+  position: relative;
+  z-index: 1;
+}
+
+.case-row.is-active {
   color: #000000;
+}
+.case-row.is-active::before {
+  transform: scaleX(1);
 }
 
 .case-row_logo {
   transition: filter 0.3s ease;
 }
-.case-row:hover .case-row_logo {
+.case-row.is-active .case-row_logo {
   filter: brightness(0);
 }
 
 .case-row_arrow {
   transition: width 0.3s ease, filter 0.3s ease;
 }
-.case-row:hover .case-row_arrow {
+.case-row.is-active .case-row_arrow {
   width: 1vw;
   filter: brightness(0);
 }
