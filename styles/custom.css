@@ -135,3 +135,59 @@
 .menu-icon.is-open .menu-icon__bar--bot {
   transform: translateY(-0.165vw) rotate(-30deg);
 }
+
+
+/* ---- 5. Страница /cases — hover на .case-row + reveal preview-img ---- */
+/* Hover-эффект сделан на CSS (transition 0.3s ease):
+   - bg #FF6038, цвет текста и стрелки #000
+   - .case-row_logo инвертируется через filter:brightness(0)
+   - .case-row_arrow раскрывается по ширине (0vw → 1vw),
+     т.к. в исходной CSS у неё width:0 (display:none анимировать нельзя). */
+.case-row {
+  background-color: transparent;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.case-row:hover {
+  background-color: #FF6038;
+  color: #000000;
+}
+
+.case-row_logo {
+  transition: filter 0.3s ease;
+}
+.case-row:hover .case-row_logo {
+  filter: brightness(0);
+}
+
+.case-row_arrow {
+  transition: width 0.3s ease, filter 0.3s ease;
+}
+.case-row:hover .case-row_arrow {
+  width: 1vw;
+  filter: brightness(0);
+}
+
+/* Preview-картинка в сайдбаре. Реализует «заливку снизу вверх»
+   через clip-path: inset(top right bottom left).
+   - inset(100% 0 0 0) — top inset 100%, видимая область 0 высоты,
+     прижата к низу → картинка полностью скрыта.
+   - inset(0% 0 0 0) — top inset 0, видимая область во всю высоту
+     → картинка полностью видна.
+   Анимация top-inset от 100% к 0% = картинка раскрывается снизу вверх. */
+.cases-sidebar_display {
+  position: relative;
+  overflow: hidden;
+}
+.cases-sidebar_preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 1;
+  clip-path: inset(100% 0 0 0);
+  -webkit-clip-path: inset(100% 0 0 0);
+  will-change: clip-path;
+}
