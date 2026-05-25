@@ -72,21 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const phase2Start = PHASE_1_DURATION + PAUSE_DURATION + exitDelay;
 
-    // y едет всю фазу 2
+    // Только y, без opacity. Карточки уезжают вверх и сами скрываются
+    // за верхним краем экрана.
     tl.to(card, {
       y: endY,
       duration: PHASE_2_DURATION,
       ease: "power2.in",
       force3D: true
     }, phase2Start);
-
-    // opacity тает медленно — половину фазы 2, с её середины до конца.
-    // Карточка к этому моменту уже заметно ушла вверх → fade выглядит
-    // как «растворение за горизонтом», а не «таяние на месте».
-    tl.to(card, {
-      opacity: 0,
-      duration: PHASE_2_DURATION * 0.5,
-      ease: "power1.in"
-    }, phase2Start + PHASE_2_DURATION * 0.5);
   });
 });
