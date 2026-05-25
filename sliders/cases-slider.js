@@ -181,12 +181,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- Drag на .case-drag-zone ----
-  // Observer висит на отдельной зоне (overlay поверх трека). Drag/свайп
-  // ловится в любой её точке. Чистый клик → ищем карточку под курсором
-  // через elementFromPoint (zone её перекрывает, обычный target.closest
-  // вернул бы саму zone). Если .case-drag-zone в DOM нет — fallback на трек.
-  const dragZone = document.querySelector('.case-drag-zone') || track;
+  // ---- Drag-зона ----
+  // Если zone лежит ВНУТРИ трека — она едет вместе с translateX и
+  // правый край уезжает за вьюпорт после первого же swipe → драгать
+  // справа становится нечем. Поэтому если найденный .case-drag-zone
+  // — потомок трека, поднимаемся к статичному предку (parentElement
+  // трека = wrapper слайдера, который не двигается).
+  let dragZone = document.querySelector('.case-drag-zone');
+  if (!dragZone || track.contains(dragZone)) {
+    dragZone = track.parentElement || track;
+  }
   dragZone.style.cursor = 'grab';
 
   Observer.create({

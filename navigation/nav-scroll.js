@@ -278,16 +278,17 @@ function bootNavScroll() {
     }
 
     function closeMenu() {
+      // menuOpen=false сразу, не в onComplete: иначе при быстрых кликах
+      // menuOpen остаётся true пока идёт close → следующий click опять
+      // попадает в closeMenu → kill → новый close → цикл. Меню «зависает»
+      // в режиме «всегда закрываюсь».
+      menuOpen = false;
       if (menuTl) menuTl.kill();
 
       // Если всё ещё в зоне инверсии — вернуть плашку в dark
       if (isInInvertZone()) applyInvertState(INVERT_DARK);
 
-      // menuOpen=false ставим в onComplete всего timeline — пока идёт
-      // close, scroll-onUpdate не перебивает tween на compressTl.
-      menuTl = gsap.timeline({
-        onComplete: () => { menuOpen = false; }
-      });
+      menuTl = gsap.timeline();
 
       menuTl.to(menuPanel, {
         height: 0,
@@ -334,19 +335,11 @@ function bootNavScroll() {
       }
     }
 
-    // stopImmediatePropagation — Webflow IX2 может висеть на той же кнопке
-    // и перебивать наш toggle. Debounce 120ms — защита от ghost-click
-    // (touchend + click дублирующиеся на тач-устройствах и от случайного
-    // дабл-тапа во время анимации).
-    let lastMenuClickAt = 0;
-    const MENU_CLICK_DEBOUNCE_MS = 120;
-
+    // stopImmediatePropagation — Webflow IX2 может висеть на той же
+    // кнопке и перебивать наш toggle.
     menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopImmediatePropagation();
-      const now = performance.now();
-      if (now - lastMenuClickAt < MENU_CLICK_DEBOUNCE_MS) return;
-      lastMenuClickAt = now;
       menuOpen ? closeMenu() : openMenu();
     });
 
