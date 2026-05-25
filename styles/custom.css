@@ -1,6 +1,15 @@
 /* Кастомные стили под скрипты. */
 
 
+/* 0.00 Safety: горизонтальный скролл никогда не должен появляться.
+   Lenis убрал нативный overflow:hidden с body (там auto height),
+   и теперь любой translateX или элемент >100vw создаёт hscroll. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+
 /* 0. Lenis smooth scroll — нативный body-скролл выключаем,
    Lenis сам управляет позицией. */
 html.lenis, html.lenis body {
@@ -25,6 +34,17 @@ html.lenis, html.lenis body {
 [data-smooth="true"] {
   opacity: 0;
   will-change: transform, opacity;
+}
+
+
+/* stages_word — слова после split в stages-animation.js. inline-block
+   нужен для transform, но длинное слово ('представьте', 'обсуждаем')
+   могло выходить за родителя 28vw и давать hscroll. max-width:100%
+   + word-break ограничивают слово в пределах контейнера. */
+.stages_word {
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 
