@@ -125,7 +125,13 @@ function bootNavScroll() {
   // ---- Режим: scroll-driven или static ----
   // body[data-nav-mode="static"] → плашка сразу в финальном виде,
   // без ScrollTrigger и без navInvertTl. Меню по клику работает обычно.
-  const isStaticNav = document.body?.dataset?.navMode === "static";
+  //
+  // На мобилке (≤991px) тоже static: scroll-compress на мобиле
+  // выглядит криво (Webflow на мобиле уже даёт плашке полную
+  // ширину, scrub-tween на touch без Lenis работает рывками,
+  // filter:invert/blur сильно тормозят на слабых девайсах).
+  const isStaticNav = document.body?.dataset?.navMode === "static"
+    || window.matchMedia("(max-width: 991px)").matches;
 
   // compressState.progress хранит «куда вернуть плашку при закрытии меню».
   // В scroll-режиме обновляется ScrollTrigger'ом, в static — фиксирован на 1.
