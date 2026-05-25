@@ -5,10 +5,12 @@
  *  — смена текстов через mask reveal: текущий yPercent: 0 → -100 (уезжает
  *    вверх в маску .stages_title-mask / .stages_subtitle-mask /
  *    .stages_p-mask), новый 100 → 0 (приезжает снизу). Маски уже стоят
- *    в Webflow с overflow:hidden — анимация работает «из коробки».
- * Параллельно тикают точки .stages_dot-full/empty (с лёгким pop-scale
- * на активной) и лейбл «ЭТАП N» (тоже mask reveal — .stages_meta-row
- * имеет overflow:hidden).
+ *    в Webflow с overflow:hidden.
+ * Пагинация — НЕ в scrub-таймлайне (там она пропадала на быстром скролле
+ * и конфликтовала с IX2). Отдельный ScrollTrigger.onUpdate переключает
+ * активную точку через прямой opacity 0/1 на .stages_dot-full/empty —
+ * та же схема что в cases-slider.js.
+ * Лейбл «ЭТАП N» тоже mask reveal — .stages_meta-row имеет overflow:hidden.
  */
 
 function bootStagesAnimation() {
@@ -77,28 +79,71 @@ function bootStagesAnimation() {
   });
 
 
-  // Mask reveal текстов. .stages_title-mask, .stages_subtitle-mask,
-  // .stages_p-mask — все overflow:hidden. Двигаем внутренние элементы
-  // через yPercent (относительно собственной высоты) — текст ровно
-  // прячется за маской.
+  // ---- Тексты + пагинация + лейбл ----
   const wrappers = gsap.utils.toArray(".stages_text-wrapper");
-  const dotsFull = gsap.utils.toArray(".stages_dot-full");
-  const dotsEmpty = gsap.utils.toArray(".stages_dot-empty");
+  const dots = gsap.utils.toArray(".stages_dot");
   const stepLabel = document.querySelector(".stages_step-label");
   const stagesPagination = document.querySelector(".stages_pagination");
 
   if (wrappers.length === 0) return;
 
-  // Webflow IX2 (data-w-id) сам управляет opacity на точках и pagination —
-  // снимаем атрибут, иначе IX2 сбрасывает наш opacity после gsap.set.
-  const pagDots = [...dotsFull, ...dotsEmpty];
-  if (stagesPagination) pagDots.push(stagesPagination);
-  pagDots.forEach(el => el.removeAttribute("data-w-id"));
+  // ---- Пагинация: setActiveDot + ScrollTrigger ----
+  // На каждом .stages_dot снимаем data-w-id (и на pagination, и на
+  // самих img dot-empty/dot-full). Иначе Webflow IX2 переписывает
+  // opacity после нашего set'а.
+  const dotInners = [];
+  dots.forEach((dot) => {
+    dot.removeAttribute("data-w-id");
+    const full = dot.querySelector(".stages_dot-full");
+    const empty = dot.querySelector(".stages_dot-empty");
+    if (full) full.removeAttribute("data-w-id");
+    if (empty) empty.removeAttribute("data-w-id");
+    dotInners.push({ full, empty });
+  });
+  if (stagesPagination) {
+    stagesPagination.removeAttribute("data-w-id");
+    stagesPagination.style.setProperty("opacity", "1", "important");
+  }
 
-  if (stagesPagination) gsap.set(stagesPagination, { opacity: 1 });
+  // setProperty с !important — единственный надёжный способ перебить
+  // inline-стили которые IX2 может поставить позже.
+  function setActiveDot(index) {
+    dotInners.forEach(({ full, empty }, i) => {
+      const isActive = i === index;
+      if (full)  full.style.setProperty("opacity", isActive ? "1" : "0", "important");
+      if (empty) empty.style.setProperty("opacity", isActive ? "0" : "1", "important");
+    });
+  }
 
-  // will-change на текстах. Без backface-visibility получаются artifacts
-  // на ретине при transform.
+  // Стартовое состояние — активна первая точка
+  setActiveDot(0);
+
+  // Отдельный ScrollTrigger переключает активную точку по scroll-прогрессу.
+  // Не в scrub-таймлайне — там tween'ы скипались на быстром скролле и
+  // конфликтовали с IX2.
+  let lastDotIndex = 0;
+  ScrollTrigger.create({
+    trigger: ".stages",
+    start: "top top",
+    end: "bottom bottom",
+    onUpdate: (self) => {
+      const idx = Math.min(
+        Math.floor(self.progress * wrappers.length),
+        wrappers.length - 1
+      );
+      if (idx !== lastDotIndex) {
+        lastDotIndex = idx;
+        setActiveDot(idx);
+      }
+    },
+    onRefresh: () => setActiveDot(lastDotIndex)
+  });
+
+
+  // ---- Mask reveal текстов ----
+  // .stages_title-mask, .stages_subtitle-mask, .stages_p-mask — все
+  // overflow:hidden. Двигаем внутренние элементы через yPercent
+  // (относительно собственной высоты) — текст ровно прячется за маской.
   wrappers.forEach((wrap) => {
     const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
     innerTexts.forEach(el => {
@@ -112,7 +157,7 @@ function bootStagesAnimation() {
     stepLabel.style.backfaceVisibility = "hidden";
   }
 
-  // Стартовое: первый wrapper виден полностью, остальные — за маской снизу
+  // Стартовое: первый wrapper виден, остальные — за маской снизу
   wrappers.forEach((wrap, index) => {
     const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
     if (index === 0) {
@@ -126,13 +171,6 @@ function bootStagesAnimation() {
 
   if (stepLabel) gsap.set(stepLabel, { yPercent: 0 });
 
-  // Стартовое для точек: первая активна (full=1, empty=0, scale=1),
-  // остальные — наоборот, scale 0.85 для будущего pop при активации.
-  if (dotsFull[0]) gsap.set(dotsFull[0], { opacity: 1, scale: 1, transformOrigin: "center center" });
-  if (dotsFull.length > 1) gsap.set(dotsFull.slice(1), { opacity: 0, scale: 0.85, transformOrigin: "center center" });
-  if (dotsEmpty[0]) gsap.set(dotsEmpty[0], { opacity: 0 });
-  if (dotsEmpty.length > 1) gsap.set(dotsEmpty.slice(1), { opacity: 1 });
-
   const tlStages = gsap.timeline({
     scrollTrigger: {
       trigger: ".stages",
@@ -141,13 +179,6 @@ function bootStagesAnimation() {
       scrub: 1.5
     }
   });
-
-  // Дублируем стартовое внутри таймлайна — иначе scrub-рефреш
-  // ре-инициализирует tween'ы и сбивает inline opacity/scale.
-  if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1, scale: 1 }, 0);
-  if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0, scale: 0.85 }, 0);
-  if (dotsEmpty[0]) tlStages.set(dotsEmpty[0], { opacity: 0 }, 0);
-  if (dotsEmpty.length > 1) tlStages.set(dotsEmpty.slice(1), { opacity: 1 }, 0);
 
   wrappers.forEach((wrap, i) => {
     if (i >= wrappers.length - 1) return;
@@ -160,8 +191,7 @@ function bootStagesAnimation() {
 
     tlStages.set(nextWrap, { autoAlpha: 1 }, stepName);
 
-    // УХОД: текущий текст уезжает вверх внутри маски (yPercent:-100)
-    // staggered — заголовок первым, текст по строкам следом
+    // Уход: текущий текст уезжает вверх внутри маски
     tlStages.to(currentTexts, {
       yPercent: -100,
       duration: 1.0,
@@ -169,8 +199,8 @@ function bootStagesAnimation() {
       ease: "power3.inOut"
     }, stepName);
 
-    // ПОЯВЛЕНИЕ: новый текст приезжает снизу. +=0.25 — лёгкое опережение
-    // (новый стартует пока старый ещё не до конца уехал → переход плавный)
+    // Появление: новый текст приезжает снизу. +=0.25 — лёгкое опережение,
+    // переход не получает зазора между уходом и появлением
     tlStages.fromTo(nextTexts,
       { yPercent: 100 },
       {
@@ -180,34 +210,6 @@ function bootStagesAnimation() {
         ease: "power3.out"
       },
       `${stepName}+=0.25`);
-
-    // Точки: текущая гаснет и shrink, следующая загорается и pop через back-ease
-    tlStages.to(dotsFull[i], {
-      opacity: 0,
-      scale: 0.85,
-      duration: 0.55,
-      ease: "power2.inOut"
-    }, stepName);
-    if (dotsEmpty[i]) {
-      tlStages.to(dotsEmpty[i], {
-        opacity: 1,
-        duration: 0.55,
-        ease: "power2.inOut"
-      }, stepName);
-    }
-    tlStages.to(dotsFull[i + 1], {
-      opacity: 1,
-      scale: 1,
-      duration: 0.65,
-      ease: "back.out(2)"
-    }, stepName);
-    if (dotsEmpty[i + 1]) {
-      tlStages.to(dotsEmpty[i + 1], {
-        opacity: 0,
-        duration: 0.55,
-        ease: "power2.inOut"
-      }, stepName);
-    }
 
     // Лейбл «ЭТАП N» — mask reveal через overflow:hidden на .stages_meta-row
     if (stepLabel) {
