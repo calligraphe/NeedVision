@@ -4,6 +4,8 @@
  *
  * Debug-режим: console.log запуска и найденных элементов —
  * открой DevTools Console чтобы понять что не так.
+ *
+ * Build: 2026-05-25-v2
  */
 
 document.addEventListener("DOMContentLoaded", () => {
