@@ -70,7 +70,7 @@ function bootNavScroll() {
   // top → y (translateY): composite, без layout reflow.
   // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
   compressTl.to(".nav-logo_img", {
-    width: "62%",
+    width: "55%",
     y: "4vw",
     duration: 0.25,
     ease: "power2.out"
