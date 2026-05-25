@@ -1,10 +1,11 @@
 /**
- * Hero exit. Универсальный mask-reveal: берём firstElementChild у
- * ВСЕХ hero-масок (.hero_item-mask, .hero_header-mask и любых
- * других с этим суффиксом). Не зависит от того как юзер назвал
- * конкретные текстовые элементы — анимирует то что внутри маски.
+ * Hero exit. Autoplay-timeline (НЕ scrub). Элементы внутри
+ * .hero_item-mask (overflow:hidden) уезжают yPercent:-100.
  *
- * Build: 2026-05-25-v3
+ * Debug-режим: console.log запуска и найденных элементов —
+ * открой DevTools Console чтобы понять что не так.
+ *
+ * Build: 2026-05-25-v2
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,47 +18,54 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  console.log("[hero-exit] init v3");
+  console.log("[hero-exit] init");
 
-  // Любая hero-маска: item-mask, header-mask, hero-sub, и т.п.
-  // Селектор по подстроке 'mask' покрывает все варианты.
-  const masks = document.querySelectorAll('[class*="hero_item-mask"], [class*="hero_header-mask"], .hero_item-mask, .hero_header-mask');
-
-  console.log(`[hero-exit] масок найдено: ${masks.length}`);
+  const selectors = [
+    ".hero_planet-img",
+    ".hero_label",
+    ".hero_tag",
+    ".hero_title1",
+    ".hero_title2",
+    ".hero_subtitle1",
+    ".hero_subtitle2"
+  ];
 
   const inners = [];
-  masks.forEach((mask, i) => {
-    mask.removeAttribute("data-w-id");
-    const child = mask.firstElementChild;
-    if (!child) {
-      console.warn(`[hero-exit] маска #${i} пустая, пропускаем`, mask);
-      return;
-    }
-    child.removeAttribute("data-w-id");
-    child.style.willChange = "transform, opacity";
-    console.log(`[hero-exit] inner #${i}:`, child.className || child.tagName);
-    inners.push(child);
+  selectors.forEach((sel) => {
+    const els = document.querySelectorAll(sel);
+    console.log(`[hero-exit] ${sel} → ${els.length}`);
+    els.forEach((el) => {
+      el.removeAttribute("data-w-id");
+      el.style.willChange = "transform";
+      // Принудительно ставим стартовое состояние через gsap.set
+      gsap.set(el, { yPercent: 0, clearProps: "transform" });
+      inners.push(el);
+    });
   });
 
-  // Wrapper'ы тоже без IX2
-  document.querySelectorAll(".hero_subtitle-wrapper, .hero_title-wrapper, .hero_tags-group")
+  // Маски и обёртки тоже без IX2
+  document.querySelectorAll(".hero_item-mask, .hero_subtitle-wrapper, .hero_title-wrapper, .hero_tags-group")
     .forEach((el) => el.removeAttribute("data-w-id"));
 
+  console.log(`[hero-exit] total inners: ${inners.length}`);
+
   if (inners.length === 0) {
-    console.error("[hero-exit] масок не нашёл — проверь имена классов");
+    console.error("[hero-exit] не нашёл ни одного hero-элемента — проверь имена классов в Webflow");
     return;
   }
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Двойная защита: повторно снимаем data-w-id через 500ms (Webflow
-  // IX2 может восстановить атрибуты).
+  // Двойная защита: повторно снимаем data-w-id через 500ms — иногда
+  // Webflow IX2 восстанавливает атрибуты после нашего init.
   setTimeout(() => {
     inners.forEach((el) => el.removeAttribute("data-w-id"));
-    masks.forEach((m) => m.removeAttribute("data-w-id"));
   }, 500);
 
   const tl = gsap.timeline({ paused: true });
+  // Тройной транспорт: yPercent (по высоте элемента) + y в px (на случай
+  // если высота 0 / element inline / yPercent не считается) + opacity.
+  // Хотя бы один из трёх гарантированно скроет элемент за маской.
   tl.to(inners, {
     yPercent: -110,
     y: -200,
