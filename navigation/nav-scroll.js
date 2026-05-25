@@ -59,7 +59,7 @@ function bootNavScroll() {
   // profit, инверсия) отложено на TOP_DELAY — чтобы лого успело
   // «приземлиться» до того, как плашка начнёт перекрашиваться.
   const compressTl = gsap.timeline({ paused: true });
-  const TOP_DELAY = 0.05;
+  const TOP_DELAY = 0.08;
 
   // top → y (translateY): composite, без layout reflow.
   // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
