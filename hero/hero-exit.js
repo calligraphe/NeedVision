@@ -64,17 +64,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Scrub-таймлайн: scroll 100→400px (300px range), stagger 0.12 —
-  // плавный барабан. Уход yPercent:-110 (запас на padding).
+  // Scrub-таймлайн: scroll 100→600px (500px range). ease:'none' →
+  // движение строго линейно следует за scroll-progress (без 'резкого
+  // ухода в конце' который давал power2.in). Маска overflow:hidden
+  // сама скрывает элемент когда yPercent доходит до -100, opacity
+  // больше не нужен.
   gsap.to(inners, {
-    yPercent: -110,
-    opacity: 0,
-    ease: "power2.in",
-    stagger: 0.12,
+    yPercent: -100,
+    ease: "none",
+    stagger: 0.1,
     scrollTrigger: {
       trigger: "body",
       start: "top top-=100",
-      end: "top top-=400",
+      end: "top top-=600",
       scrub: true
     }
   });
