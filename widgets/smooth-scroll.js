@@ -23,12 +23,37 @@
   const ANCHOR_DURATION = 1.4;
   const EXPO_OUT = (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t));
 
+  function alreadyHasLenis() {
+    // Стороннее приложение (например встроенная 3D-сцена с Netlify)
+    // может уже инициализировать свой Lenis. Признаки:
+    //   1. html.lenis класс — Lenis сам его ставит при init;
+    //   2. window.lenisVersion — ставится конструктором Lenis.
+    // Два Lenis-инстанса на странице конфликтуют scroll-position
+    // друг друга → ScrollTrigger ломается, scrub-анимации (bento,
+    // stages) перестают работать.
+    return document.documentElement.classList.contains("lenis")
+        || typeof window.lenisVersion !== "undefined";
+  }
+
   function boot() {
     if (typeof Lenis === "undefined") {
       console.warn("smooth-scroll.js: Lenis не загружен — проверь CDN в footer-code");
       return;
     }
 
+    // Дать стороннему Lenis (если он есть) шанс инициализироваться
+    // первым. 50ms незаметно для юзера, но достаточно чтобы класс
+    // .lenis появился на html.
+    setTimeout(() => {
+      if (alreadyHasLenis()) {
+        console.log("smooth-scroll.js: внешний Lenis уже работает, свой не запускаем");
+        return;
+      }
+      initLenis();
+    }, 50);
+  }
+
+  function initLenis() {
     const lenis = new Lenis({
       duration: SCROLL_DURATION,
       easing: EXPO_OUT,
