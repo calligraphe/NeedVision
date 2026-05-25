@@ -140,10 +140,7 @@ function bootNavScroll() {
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
-    // Скролл двигает proxy. end +=1280 (раньше +=1600) — плашка
-    // сжимается на 20% быстрее по скроллу. scrub 1.8 (раньше 2.5) —
-    // inertia-доводка короче, реакция чуть отзывчивее, но плавность
-    // от Lenis сохраняется.
+    // Scroll-driven сжатие плашки. scrub 1.8 даёт плавность поверх Lenis.
     gsap.to(compressState, {
       progress: 1,
       ease: "none",
@@ -154,11 +151,32 @@ function bootNavScroll() {
         scrub: 1.8
       },
       onUpdate: () => {
-        if (!menuOpen) {
-          compressTl.progress(compressState.progress);
+        if (menuOpen) return;
+        // Кнопка «вверх» / якорь #top делают lenis.scrollTo(0) — scroll
+        // прыгает в 0 быстро, но scrub:1.8 доводит compress-state ещё
+        // ~1.8s. За это время плашка зависает в полу-сжатом виде
+        // (расширилась но осталась белой). Фикс: если scrollY < 50 —
+        // мгновенно force decompress.
+        if (window.scrollY < 50 && compressTl.progress() > 0.05) {
+          compressTl.progress(0);
+          compressState.progress = 0;
+          return;
         }
+        compressTl.progress(compressState.progress);
       }
     });
+
+    // Force-reset инверсии при достижении top. navInvertTl scrub
+    // может догонять scroll-jump до 2s — за это время плашка стоит
+    // в чёрно-белом state. Догоняем сами через прямой gsap.to.
+    window.addEventListener("scroll", () => {
+      if (window.scrollY < 50 && navInvertTl?.scrollTrigger?.progress > 0.05) {
+        gsap.to(".menu_overlay-content", { backgroundColor: "#ffffff", duration: 0.4, overwrite: "auto" });
+        gsap.to(".menu_control-bar *", { color: "#000000", duration: 0.4, overwrite: "auto" });
+        gsap.to(".nav-logo_img", { filter: "invert(0)", duration: 0.4, overwrite: "auto" });
+        gsap.to(".nav-icon", { filter: "invert(1)", duration: 0.4, overwrite: "auto" });
+      }
+    }, { passive: true });
 
 
     // Инверсия над .stages (бежевая секция).

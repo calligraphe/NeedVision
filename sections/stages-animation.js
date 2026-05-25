@@ -170,120 +170,84 @@ function bootStagesAnimation() {
   if (stepLabel) gsap.set(stepLabel, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
 
 
-  // ---- Autoplay-переход между этапами ----
-  // currentIdx обновляется СИНХРОННО при входе в playTransition
-  // (не в onComplete), иначе activeTl.kill() оставляет state
-  // в полу-анимации, а onUpdate видит старый currentIdx и
-  // вызывает playTransition уже с неактуальным fromIdx.
-  let currentIdx = 0;
-  let activeTl = null;
+  // ---- Главный scrub-таймлайн смены этапов ----
+  // scrub 2.2 даёт плавную inertia-доводку. Stagger мелкий (0.018),
+  // ease power2 — мягче чем power3, без 'удара'.
+  const tlStages = gsap.timeline({
+    scrollTrigger: {
+      trigger: ".stages",
+      start: "top top",
+      end: "bottom bottom",
+      scrub: 2.2
+    }
+  });
 
-  // Принудительно ставит state всех wrappers под текущий fromIdx/toIdx:
-  // активный (тот что ехать в) — visible+ready, все остальные — скрыты
-  // и слова за маской. Защита от полу-состояний после kill'а.
-  function syncStateBefore(fromIdx, toIdx) {
-    wrappers.forEach((w, i) => {
-      const words = w.querySelectorAll(".stages_word");
-      if (i === fromIdx) {
-        // Сцена ухода: from-wrapper видим, слова на месте (0)
-        gsap.set(w, { autoAlpha: 1 });
-        gsap.set(words, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
-      } else if (i === toIdx) {
-        // Сцена входа: toIdx-wrapper будет показан tween'ом, слова
-        // за маской (но autoAlpha поставим в tween, иначе мигает)
-        gsap.set(w, { autoAlpha: 0 });
-      } else {
-        // Остальные — спрятаны полностью
-        gsap.set(w, { autoAlpha: 0 });
-        gsap.set(words, { yPercent: 100, opacity: 0, filter: "blur(8px)" });
-      }
-    });
-  }
+  wrappers.forEach((wrap, i) => {
+    if (i >= wrappers.length - 1) return;
 
-  function playTransition(fromIdx, toIdx) {
-    if (fromIdx === toIdx) return;
+    const nextWrap = wrappers[i + 1];
+    const currentWords = wrap.querySelectorAll(".stages_word");
+    const nextWords = nextWrap.querySelectorAll(".stages_word");
 
-    // Сразу обновляем currentIdx — следующий onUpdate увидит актуальное
-    currentIdx = toIdx;
+    const stepName = `step_${i}`;
 
-    if (activeTl) activeTl.kill();
+    tlStages.set(nextWrap, { autoAlpha: 1 }, stepName);
 
-    syncStateBefore(fromIdx, toIdx);
-
-    const fromWords = wrappers[fromIdx].querySelectorAll(".stages_word");
-    const toWords = wrappers[toIdx].querySelectorAll(".stages_word");
-    const forward = toIdx > fromIdx;
-    const staggerFrom = forward ? "start" : "end";
-
-    activeTl = gsap.timeline();
-
-    activeTl.to(fromWords, {
-      yPercent: forward ? -100 : 100,
+    // Уход: слова уходят вверх с blur, мягкий power2.inOut
+    tlStages.to(currentWords, {
+      yPercent: -100,
       opacity: 0,
       filter: "blur(8px)",
-      duration: 0.85,
-      stagger: { each: 0.022, from: staggerFrom },
-      ease: "power3.inOut",
-      overwrite: "auto"
-    }, 0);
+      duration: 1.1,
+      stagger: { each: 0.018, from: "start" },
+      ease: "power2.inOut"
+    }, stepName);
 
-    activeTl.set(wrappers[toIdx], { autoAlpha: 1 }, 0);
-
-    activeTl.fromTo(toWords,
-      {
-        yPercent: forward ? 100 : -100,
-        opacity: 0,
-        filter: "blur(8px)"
-      },
+    // Появление: новые приезжают снизу. +0.25 опережение — без зазора
+    tlStages.fromTo(nextWords,
+      { yPercent: 100, opacity: 0, filter: "blur(8px)" },
       {
         yPercent: 0,
         opacity: 1,
         filter: "blur(0px)",
-        duration: 1.05,
-        stagger: { each: 0.028, from: staggerFrom },
-        ease: "power3.out",
-        overwrite: "auto"
+        duration: 1.3,
+        stagger: { each: 0.022, from: "start" },
+        ease: "power2.out"
       },
-      0.35);
-
-    activeTl.set(wrappers[fromIdx], { autoAlpha: 0 }, 0.85);
+      `${stepName}+=0.25`);
 
     if (stepLabel) {
-      // Force-reset перед анимацией — на случай если предыдущий лейбл-tween
-      // был kill'нут посреди blur/yPercent
-      gsap.set(stepLabel, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
-
-      activeTl.to(stepLabel, {
-        yPercent: forward ? -100 : 100,
+      tlStages.to(stepLabel, {
+        yPercent: -100,
         opacity: 0,
         filter: "blur(4px)",
-        duration: 0.4,
-        ease: "power3.in",
-        overwrite: "auto"
-      }, 0);
+        duration: 0.5,
+        ease: "power2.in"
+      }, stepName);
 
-      activeTl.set(stepLabel, {
-        textContent: `ЭТАП ${toIdx + 1}`,
-        yPercent: forward ? 100 : -100,
+      tlStages.set(stepLabel, {
+        textContent: `ЭТАП ${i + 2}`,
+        yPercent: 100,
         filter: "blur(4px)",
         opacity: 0
-      }, 0.4);
+      }, `${stepName}+=0.5`);
 
-      activeTl.to(stepLabel, {
+      tlStages.to(stepLabel, {
         yPercent: 0,
         opacity: 1,
         filter: "blur(0px)",
-        duration: 0.5,
-        ease: "power3.out",
-        overwrite: "auto"
-      }, 0.4);
+        duration: 0.6,
+        ease: "power2.out"
+      }, `${stepName}+=0.5`);
     }
 
-    setActiveDot(toIdx);
-  }
+    tlStages.set(wrap, { autoAlpha: 0 });
+    tlStages.to({}, { duration: 0.5 });
+  });
 
 
-  // ---- Триггер: scroll-position → idx → playTransition ----
+  // ---- Пагинация — отдельный onUpdate (мгновенно, не scrub-tween) ----
+  let lastDotIdx = 0;
   ScrollTrigger.create({
     trigger: ".stages",
     start: "top top",
@@ -293,11 +257,12 @@ function bootStagesAnimation() {
         Math.floor(self.progress * wrappers.length),
         wrappers.length - 1
       );
-      if (idx !== currentIdx) {
-        playTransition(currentIdx, idx);
+      if (idx !== lastDotIdx) {
+        lastDotIdx = idx;
+        setActiveDot(idx);
       }
     },
-    onRefresh: () => setActiveDot(currentIdx)
+    onRefresh: () => setActiveDot(lastDotIdx)
   });
 }
 
