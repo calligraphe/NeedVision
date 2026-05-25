@@ -19,6 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const stickySection = document.querySelector(".parallax-sticky");
   if (cards.length === 0 || !stickySection) return;
 
+  // Webflow IX2 (data-w-id) на самих карточках или контейнере может
+  // переписывать наш transform — наш tween не виден визуально хотя
+  // GSAP его двигает. Снимаем атрибут со всех затронутых элементов.
+  cards.forEach(card => card.removeAttribute('data-w-id'));
+  stickySection.removeAttribute('data-w-id');
+  // Прямые дети sticky-секции тоже — там могут сидеть IX2-завязки на overflow
+  Array.from(stickySection.children).forEach(child => child.removeAttribute('data-w-id'));
+
   gsap.registerPlugin(ScrollTrigger);
 
   // Длительности в условных единицах timeline (это пропорции внутри
