@@ -1,12 +1,16 @@
 /**
- * Hero exit. Каждый hero-блок завернут в .hero_item-mask
- * (overflow:hidden, поставлен юзером в Webflow). Анимируем
- * непосредственно contentn-элементы — они уезжают yPercent:-100
- * за свою маску.
+ * Hero exit. Autoplay-таймлайн (НЕ scrub). При скролле >100px от верха
+ * запускается полная анимация исчезновения — 3.5 секунды каскадного
+ * барабана, независимо от того насколько юзер прокрутил.
  *
- * Берём конкретными селекторами (а не firstElementChild) — надёжнее
- * против структурных особенностей (например h1.hero_title сам имеет
- * overflow:hidden, и firstElementChild может попасть не туда).
+ * Раньше был scrub-таймлайн на 300-500px scroll-range. На трекпаде
+ * MacBook один свайп даёт ~500px → анимация мгновенная.
+ *
+ * Маски .hero_item-mask (overflow:hidden) от юзера обрезают
+ * уезжающий контент. Анимируем сами content-элементы: planet-img,
+ * label, tag (×2), title, subtitle.
+ *
+ * При возврате юзера вверх (onLeaveBack) играется обратно.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,11 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Порядок DOM = порядок stagger'а: planet → label → tags → title → subtitle.
   const selectors = [
     ".hero_planet-img",
     ".hero_label",
-    ".hero_tag",       // querySelectorAll вернёт оба
+    ".hero_tag",
     ".hero_title",
     ".hero_subtitle"
   ];
@@ -40,17 +43,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // 300px range scroll, linear ease — медленно и плавно следует
-  // за колесом. stagger 0.18 → каскадный 'барабан' читается визуально.
-  gsap.to(inners, {
+  // Autoplay-timeline. Каждый элемент: duration 1.5с + stagger 0.4с
+  // → суммарно ~1.5 + 0.4*5 = 3.5 секунды от первого до последнего.
+  // ease 'power2.in' — начинают медленно, ускоряются к концу.
+  const tl = gsap.timeline({ paused: true });
+  tl.to(inners, {
     yPercent: -100,
-    ease: "none",
-    stagger: 0.18,
-    scrollTrigger: {
-      trigger: "body",
-      start: "top top-=100",
-      end: "top top-=400",
-      scrub: true
-    }
+    duration: 1.5,
+    ease: "power2.in",
+    stagger: 0.4
+  });
+
+  ScrollTrigger.create({
+    trigger: "body",
+    start: "top top-=100",
+    onEnter: () => tl.play(),
+    onLeaveBack: () => tl.reverse()
   });
 });
