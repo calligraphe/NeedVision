@@ -46,20 +46,14 @@ html.lenis, html.lenis body {
 }
 
 
-/* 0.2 Bento parallax: fade-out сверху.
-   Карточки уезжают вверх (фаза 2) — въезжая в верхние 18% секции,
-   плавно растворяются через mask-image. Без правки opacity в JS,
-   без overlay'а с фиксированным цветом фона: mask работает с любым
-   background'ом, сохраняет alpha-канал везде. */
-.parallax-sticky {
-  -webkit-mask-image: linear-gradient(to bottom,
-      transparent 0%,
-      black 18%,
-      black 100%);
-  mask-image: linear-gradient(to bottom,
-      transparent 0%,
-      black 18%,
-      black 100%);
+/* 0.2 Bento parallax: разрешаем карточкам уходить за пределы
+   sticky-секции. Если у родителя overflow:hidden — карточки
+   визуально 'застревали' у верхнего края, потому что клиппались.
+   overflow:visible снимает это ограничение. */
+.parallax-sticky,
+.parallax-sticky > *,
+.bento_card.is-parallax {
+  overflow: visible !important;
 }
 
 
