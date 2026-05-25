@@ -60,10 +60,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   tl.to({}, { duration: PAUSE_DURATION });
 
-  // Фаза 2 — уход
+  // Фаза 2 — уход.
+  // Дефолтный endY -1200 (раньше было -510): карточка ~800px высотой
+  // не успевала полностью уехать за верх, выглядело как «застряла».
   cards.forEach(card => {
     const attrEnd = card.getAttribute('data-end-y');
-    const endY = attrEnd ? parseFloat(attrEnd) : -510;
+    const endY = attrEnd ? parseFloat(attrEnd) : -1200;
 
     const attrDelay = card.getAttribute('data-exit-delay');
     const exitDelay = attrDelay ? parseFloat(attrDelay) : 0;
@@ -78,12 +80,13 @@ document.addEventListener("DOMContentLoaded", () => {
       force3D: true
     }, phase2Start);
 
-    // opacity начинает гаснуть в последней трети фазы 2 —
-    // карточка успевает заметно уехать вверх до того как тает
+    // opacity тает медленно — половину фазы 2, с её середины до конца.
+    // Карточка к этому моменту уже заметно ушла вверх → fade выглядит
+    // как «растворение за горизонтом», а не «таяние на месте».
     tl.to(card, {
       opacity: 0,
-      duration: PHASE_2_DURATION * 0.4,
-      ease: "power2.in"
-    }, phase2Start + PHASE_2_DURATION * 0.6);
+      duration: PHASE_2_DURATION * 0.5,
+      ease: "power1.in"
+    }, phase2Start + PHASE_2_DURATION * 0.5);
   });
 });
