@@ -235,21 +235,22 @@ function bootNavScroll() {
       if (needsCompress) {
         menuTl.to(compressTl, {
           progress: 1,
-          duration: 2.2,
+          duration: 1.4,
           ease: "power3.inOut",
           overwrite: true
         }, 0);
       }
 
-      // -0.7 перекрытие: последняя треть сжатия и первая треть
+      // -0.5 перекрытие: последняя треть сжатия и первая треть
       // раскрытия идут одновременно — переход цельный, без зазора.
-      // expo.out на дропдауне даёт «приземление» вместо тормоза.
-      const dropdownPos = needsCompress ? "-=0.7" : 0;
+      // Open сделан быстрее close: после клика должно мгновенно
+      // отзываться, особенно когда плашка уже сжата.
+      const dropdownPos = needsCompress ? "-=0.5" : 0;
 
       menuTl.to(menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 2.5,
+        duration: 1.2,
         ease: "expo.out"
       }, dropdownPos);
 
@@ -257,7 +258,7 @@ function bootNavScroll() {
         menuTl.to(menuBackdrop, {
           opacity: 1,
           pointerEvents: "auto",
-          duration: 2.1,
+          duration: 1.0,
           ease: "expo.out"
         }, "<");
       }
@@ -270,12 +271,12 @@ function bootNavScroll() {
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.6,
+          duration: 0.3,
           ease: "power3.in",
           overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "CLOSE";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.8, ease: "expo.out" });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.4, ease: "expo.out" });
           }
         });
       }
