@@ -3,21 +3,27 @@
  * меняет ощущение «резкости» сайта.
  *
  * Lenis крутится в общем gsap.ticker (один rAF на всё) и шлёт updates
- * в ScrollTrigger — иначе scrub-таймлайны отстают от реального
- * scroll-position'а.
+ * в ScrollTrigger — иначе scrub-таймлайны отстают за scroll-position'ом.
  *
  * Глобально доступен как window.lenis — другие скрипты могут
  * остановить/возобновить скролл (например при открытом модалке).
+ *
+ * Якорные ссылки (a[href^="#"]) перехватываются и скроллятся через
+ * lenis.scrollTo — иначе браузер делает мгновенный snap.
  */
 
 (() => {
-  const LERP = 0.085;          // плавность доводки (меньше = плавнее, больше = резче)
-  const WHEEL_MULTIPLIER = 1.0;
+  // lerp: коэффициент доводки (Lenis на каждом кадре сдвигает текущую
+  // позицию на lerp% к таргету). Меньше = плавнее и «ленивее».
+  // 0.07 = заметно премиальный feel, 0.1 = почти нативный, 0.05 = слишком вязко.
+  const LERP = 0.07;
+  const WHEEL_MULTIPLIER = 0.95;   // чуть меньше 1 → шаг скролла мягче
   const TOUCH_MULTIPLIER = 1.5;
+  const ANCHOR_DURATION = 1.4;     // секунды доводки до якоря
 
   function boot() {
     if (typeof Lenis === "undefined") {
-      console.warn("smooth-scroll.js: Lenis не загружен");
+      console.warn("smooth-scroll.js: Lenis не загружен — проверь CDN в footer-code");
       return;
     }
 
@@ -46,6 +52,25 @@
     }
 
     window.lenis = lenis;
+
+
+    // Якорные ссылки — через lenis.scrollTo вместо браузерного snap
+    document.addEventListener("click", (e) => {
+      const link = e.target.closest('a[href^="#"]');
+      if (!link) return;
+      const href = link.getAttribute("href");
+      if (!href || href === "#") return;
+
+      const target = document.querySelector(href);
+      if (!target) return;
+
+      e.preventDefault();
+      lenis.scrollTo(target, {
+        duration: ANCHOR_DURATION,
+        // expo-кривая: быстрый старт, мягкая доводка
+        easing: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
+      });
+    });
   }
 
   if (document.readyState === "loading") {
