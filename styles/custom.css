@@ -140,7 +140,7 @@ html.lenis, html.lenis body {
   background: currentColor;
   transform-origin: center center;
   /* expo-like easing — лёгкое начало и долгая плавная доводка */
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }
 .menu-icon__bar--top { top: 0.125vw; }
