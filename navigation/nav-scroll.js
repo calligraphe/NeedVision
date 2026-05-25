@@ -177,30 +177,28 @@ function bootNavScroll() {
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
-    // Scroll-driven compress. scrub 1.8 даёт плавность поверх Lenis.
+    // Scroll-driven compress. Оригинальные тайминги: end +=800, scrub 1.
     gsap.to(compressState, {
       progress: 1,
       ease: "none",
       scrollTrigger: {
         trigger: "body",
         start: "top top",
-        end: "+=1280",
-        scrub: 1.8
+        end: "+=800",
+        scrub: 1
       },
       onUpdate: () => {
         if (!menuOpen) compressTl.progress(compressState.progress);
       }
     });
 
-    // Инверсия над .stages (бежевая секция).
-    // .to (а не .fromTo) — захватываем текущее состояние, не пробивая
-    // forced from-value поверх compressTl.
+    // Инверсия над .stages. Оригинальная зона top 85% → top 25%, scrub 1.
     navInvertTl = gsap.timeline({
       scrollTrigger: {
         trigger: ".stages",
-        start: "top 90%",
-        end: "top 15%",
-        scrub: 1.8
+        start: "top 85%",
+        end: "top 25%",
+        scrub: 1
       }
     });
 
@@ -260,7 +258,7 @@ function bootNavScroll() {
   // этой зоне возвращаем светлый вид; при закрытии — обратно в dark.
   const INVERT_DARK  = { bg: "#040101", color: "#ffffff", logo: "invert(1)", icon: "invert(0)" };
   const INVERT_LIGHT = { bg: "#ffffff", color: "#000000", logo: "invert(0)", icon: "invert(1)" };
-  const INVERT_OVERRIDE_DURATION = 1.4;
+  const INVERT_OVERRIDE_DURATION = 0.5;
 
   function applyInvertState(state) {
     const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "expo.out", overwrite: "auto" };
@@ -291,29 +289,29 @@ function bootNavScroll() {
       if (needsCompress) {
         menuTl.to(compressTl, {
           progress: 1,
-          duration: 1.4,
-          ease: "power3.inOut",
+          duration: 0.95,
+          ease: "power2.inOut",
           overwrite: true
         }, 0);
       }
 
-      // -0.5 перекрытие: последняя треть сжатия и первая треть
-      // раскрытия одновременно — без зазора.
-      const dropdownPos = needsCompress ? "-=0.5" : 0;
+      // -0.2 перекрытие: последняя четверть сжатия и первая четверть
+      // раскрытия одновременно — переход цельный.
+      const dropdownPos = needsCompress ? "-=0.2" : 0;
 
       menuTl.to($menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 1.2,
-        ease: "expo.out"
+        duration: 1.1,
+        ease: "power2.out"
       }, dropdownPos);
 
       if ($menuBackdrop) {
         menuTl.to($menuBackdrop, {
           opacity: 1,
           pointerEvents: "auto",
-          duration: 1.0,
-          ease: "expo.out"
+          duration: 0.9,
+          ease: "power2.out"
         }, "<");
       }
 
@@ -325,12 +323,12 @@ function bootNavScroll() {
       if ($menuTxt) {
         gsap.to($menuTxt, {
           opacity: 0,
-          duration: 0.3,
-          ease: "power3.in",
+          duration: 0.2,
+          ease: "power2.in",
           overwrite: "auto",
           onComplete: () => {
             $menuTxt.textContent = "CLOSE";
-            gsap.to($menuTxt, { opacity: 1, duration: 0.4, ease: "expo.out" });
+            gsap.to($menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
           }
         });
       }
@@ -349,27 +347,27 @@ function bootNavScroll() {
       menuTl.to($menuPanel, {
         height: 0,
         opacity: 0,
-        duration: 1.8,
-        ease: "power3.inOut"
+        duration: 0.75,
+        ease: "power2.in"
       }, 0);
 
       if ($menuBackdrop) {
         menuTl.to($menuBackdrop, {
           opacity: 0,
           pointerEvents: "none",
-          duration: 1.7,
-          ease: "power3.inOut"
+          duration: 0.7,
+          ease: "power2.in"
         }, 0);
       }
 
-      // -1.0 перекрытие: декомпрессия стартует пока дропдаун
-      // ещё схлопывается — плавный переход.
+      // -0.3 перекрытие: декомпрессия стартует пока дропдаун
+      // ещё схлопывается.
       menuTl.to(compressTl, {
         progress: compressState.progress,
-        duration: 2.2,
-        ease: "power3.inOut",
+        duration: 0.95,
+        ease: "power2.inOut",
         overwrite: true
-      }, "-=1.0");
+      }, "-=0.3");
 
       if ($menuIcon) {
         $menuIcon.classList.remove("is-open");
@@ -379,12 +377,12 @@ function bootNavScroll() {
       if ($menuTxt) {
         gsap.to($menuTxt, {
           opacity: 0,
-          duration: 0.6,
-          ease: "power3.in",
+          duration: 0.2,
+          ease: "power2.in",
           overwrite: "auto",
           onComplete: () => {
             $menuTxt.textContent = "Menu";
-            gsap.to($menuTxt, { opacity: 1, duration: 0.8, ease: "expo.out" });
+            gsap.to($menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
           }
         });
       }
