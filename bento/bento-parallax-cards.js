@@ -68,14 +68,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const attrDelay = card.getAttribute('data-exit-delay');
     const exitDelay = attrDelay ? parseFloat(attrDelay) : 0;
 
-    // Без opacity: 0 — карточки уезжают вверх, оставаясь видимыми,
-    // и сами скрываются за верхним краем экрана. Раньше fade-out на
-    // пол-пути выглядел как «исчезли в воздухе».
+    const phase2Start = PHASE_1_DURATION + PAUSE_DURATION + exitDelay;
+
+    // y едет всю фазу 2
     tl.to(card, {
       y: endY,
       duration: PHASE_2_DURATION,
       ease: "power2.in",
       force3D: true
-    }, PHASE_1_DURATION + PAUSE_DURATION + exitDelay);
+    }, phase2Start);
+
+    // opacity начинает гаснуть в последней трети фазы 2 —
+    // карточка успевает заметно уехать вверх до того как тает
+    tl.to(card, {
+      opacity: 0,
+      duration: PHASE_2_DURATION * 0.4,
+      ease: "power2.in"
+    }, phase2Start + PHASE_2_DURATION * 0.6);
   });
 });
