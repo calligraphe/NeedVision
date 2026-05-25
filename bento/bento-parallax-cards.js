@@ -32,17 +32,22 @@ document.addEventListener("DOMContentLoaded", () => {
   // "top top" → между предыдущей секцией и первым движением
   // была мёртвая чёрная зона.
   //
-  // end: "bottom top+=40%" — анимация идёт даже когда блок уже
-  // ушёл за верх. Растягивает scroll-distance ещё на ~40vh
-  // → суммарно ~1.4× от старой длины анимации.
+  // end: "bottom top" — анимация заканчивается ровно когда блок
+  // ушёл за верх. Дальше нельзя расширять (+=N) — иначе после
+  // bento образуется пустота, и следующая секция не успевает
+  // параллаксом наехать на уходящие карточки.
   //
-  // scrub: true (а не число) — каждое движение строго привязано
-  // к колесу. Не дёргается само, без inertia-доводки.
+  // Растянутый start ('top bottom' вместо 'top top') автоматически
+  // делает scroll-distance ~ h + vh вместо h → анимация в ~1.5×
+  // длиннее старой, без правки end.
+  //
+  // scrub: true — строгая 1:1 привязка к колесу. Не дёргается
+  // само, без inertia-доводки.
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: ".parallax-sticky",
       start: "top bottom",
-      end: "bottom top+=40%",
+      end: "bottom top",
       scrub: true,
       invalidateOnRefresh: true
     }
