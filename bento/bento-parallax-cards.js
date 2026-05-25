@@ -49,15 +49,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Фаза 1 — появление (только y, opacity отдан per-card ticker'у)
+  // Фаза 1 — появление
   cards.forEach(card => {
     const attrStart = card.getAttribute('data-start-y');
     const startY = attrStart ? parseFloat(attrStart) : 600;
 
     tl.fromTo(card, {
-      y: startY
+      y: startY,
+      opacity: 0
     }, {
       y: 0,
+      opacity: 1,
       duration: PHASE_1_DURATION,
       ease: "power2.out",
       force3D: true
@@ -67,7 +69,8 @@ document.addEventListener("DOMContentLoaded", () => {
   tl.to({}, { duration: PAUSE_DURATION });
 
   // Фаза 2 — уход. Дефолтный endY -1200: карточка ~800px высотой
-  // успевает полностью уехать за верх.
+  // успевает полностью уехать за верх. Opacity отложен на вторую
+  // половину фазы — карточка уезжает заметно, потом тает.
   cards.forEach(card => {
     const attrEnd = card.getAttribute('data-end-y');
     const endY = attrEnd ? parseFloat(attrEnd) : -1200;
@@ -83,27 +86,11 @@ document.addEventListener("DOMContentLoaded", () => {
       ease: "power2.in",
       force3D: true
     }, phase2Start);
+
+    tl.to(card, {
+      opacity: 0,
+      duration: PHASE_2_DURATION * 0.5,
+      ease: "power1.in"
+    }, phase2Start + PHASE_2_DURATION * 0.5);
   });
-
-
-  // Per-card opacity по положению на экране.
-  // Карточка тает когда её верх приближается к верху viewport
-  // (fade-zone = верхние FADE_OUT_PX). Так каждая карточка исчезает
-  // именно когда касается верхнего края, а не по progress таймлайна.
-  const FADE_OUT_PX = 200;
-
-  function updateOpacities() {
-    cards.forEach(card => {
-      const top = card.getBoundingClientRect().top;
-      let opacity = 1;
-      if (top < FADE_OUT_PX) {
-        // top=0 → opacity=0, top=FADE_OUT_PX → opacity=1
-        opacity = Math.max(0, top / FADE_OUT_PX);
-      }
-      card.style.opacity = opacity;
-    });
-  }
-
-  // Общий gsap.ticker — не плодим лишних RAF
-  gsap.ticker.add(updateOpacities);
 });
