@@ -28,14 +28,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const PHASE_2_DURATION = 5;
 
   // start: "top bottom" — анимация начинается как только секция
-  // только-только показалась в нижнем краю экрана.
+  // показалась снизу.
   // end: "bottom top" — заканчивается когда блок ушёл за верх.
-  //
-  // One-way scrub: при скролле вниз tl следует за scroll-progress
-  // (как scrub:true), при скролле вверх остаётся на максимуме —
-  // карточки не исчезают обратно. Реализовано через отдельный
-  // ScrollTrigger без scrub + maxProgress в onUpdate.
-  const tl = gsap.timeline({ paused: true });
+  // scrub: true — строгая 1:1 привязка к колесу.
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: ".parallax-sticky",
+      start: "top bottom",
+      end: "bottom top",
+      scrub: true,
+      invalidateOnRefresh: true
+    }
+  });
 
   // Фаза 1 — появление
   cards.forEach(card => {
@@ -64,29 +68,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const attrDelay = card.getAttribute('data-exit-delay');
     const exitDelay = attrDelay ? parseFloat(attrDelay) : 0;
 
+    // Без opacity: 0 — карточки уезжают вверх, оставаясь видимыми,
+    // и сами скрываются за верхним краем экрана. Раньше fade-out на
+    // пол-пути выглядел как «исчезли в воздухе».
     tl.to(card, {
       y: endY,
-      opacity: 0,
       duration: PHASE_2_DURATION,
       ease: "power2.in",
       force3D: true
     }, PHASE_1_DURATION + PAUSE_DURATION + exitDelay);
-  });
-
-  // One-way scrub: progress только растёт. Reverse при скролле вверх
-  // отключён → карточки не "схлопываются" обратно когда юзер уезжает
-  // вверх по странице.
-  let maxProgress = 0;
-  ScrollTrigger.create({
-    trigger: ".parallax-sticky",
-    start: "top bottom",
-    end: "bottom top",
-    invalidateOnRefresh: true,
-    onUpdate: (self) => {
-      if (self.progress > maxProgress) {
-        maxProgress = self.progress;
-        tl.progress(maxProgress);
-      }
-    }
   });
 });
