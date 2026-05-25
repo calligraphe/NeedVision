@@ -46,20 +46,6 @@ html.lenis, html.lenis body {
 }
 
 
-/* 0.2 Bento parallax: разрешаем карточкам уходить за пределы
-   sticky-секции. Структура: .parallax-sticky → 3 секции, одна из
-   них с position:sticky содержит карточки. Если у sticky-секции
-   или её wrapper'а overflow:hidden — карточки клиппались у верха
-   и казались застрявшими.
-   Селектор покрывает: контейнер, все его дочерние секции, любые
-   wrapper'ы карточек, сами карточки. */
-.parallax-sticky,
-.parallax-sticky *,
-.bento_card.is-parallax {
-  overflow: visible !important;
-}
-
-
 /* 1. Размытая «корочка» под навигацией */
 .nav-blur-bg {
   backdrop-filter: blur(8px);
