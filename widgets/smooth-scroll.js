@@ -36,6 +36,16 @@
   }
 
   function boot() {
+    // Browser native scroll-restoration ловит scroll-position при back/refresh
+    // и восстанавливает её после load. Если страница содержит scroll-driven
+    // анимации (3D-сцена со scroll-progress, sticky-секции с pin), это
+    // вызывает 'прыжок вверх' через ~1 секунду после load — браузер думает
+    // 'scroll = 0' пока DOM не догрузился, и потом resync'ит к старой позиции.
+    // Manual режим — мы сами решаем где юзер при load (всегда сверху).
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
     if (typeof Lenis === "undefined") {
       console.warn("smooth-scroll.js: Lenis не загружен — проверь CDN в footer-code");
       return;

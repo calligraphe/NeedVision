@@ -1,10 +1,5 @@
 <style>
-  /* Прелоудер виден с первого кадра, до запуска preloader.js.
-     Без этого Webflow дефолт скрывал .preloader через display:none
-     (или другой класс), и при переходе на новую страницу был flash —
-     юзер видел сайт ~10-50ms ДО того как JS его покрыл прелоудером.
-     Дефолт visible решает: страница рендерится сразу с прелоудером
-     поверх, JS потом красиво гасит через fade-out. */
+  /* Прелоудер виден с первого кадра, до запуска preloader.js. */
   .preloader {
     display: flex;
     opacity: 1;
@@ -12,3 +7,9 @@
     z-index: 99999;
   }
 </style>
+
+<!-- 3D-сцена с needvision.netlify.app -->
+<!-- Worker-interceptor — обязательно перед app.js! -->
+<script src="https://needvision.aoxuaio.workers.dev/widgets/scene-3d-loader.js"></script>
+<link rel="stylesheet" href="https://needvision.netlify.app/assets/app.css">
+<script type="module" src="https://needvision.netlify.app/assets/app.js"></script>

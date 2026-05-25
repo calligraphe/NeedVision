@@ -38,14 +38,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // start: "top bottom" — анимация начинается как только секция
   // показалась снизу.
   // end: "bottom top" — заканчивается когда блок ушёл за верх.
-  // scrub: true — строгая 1:1 привязка к колесу.
+  // scrub: 0.5 — лёгкая inertia (не true) для устойчивости при
+  // внешнем Lenis от 3D-сцены, который может дёргать ScrollTrigger.
+  // invalidateOnRefresh: false — иначе при каждом ScrollTrigger.refresh
+  // (а Lenis инициирует refresh при scroll-position change) fromTo
+  // пересчитывает from-values → opacity моргает.
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: ".parallax-sticky",
       start: "top bottom",
       end: "bottom top",
-      scrub: true,
-      invalidateOnRefresh: true
+      scrub: 0.5,
+      invalidateOnRefresh: false
     }
   });
 
