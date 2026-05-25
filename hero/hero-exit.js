@@ -1,16 +1,9 @@
 /**
- * Hero exit. Autoplay-таймлайн (НЕ scrub). При скролле >100px от верха
- * запускается полная анимация исчезновения — 3.5 секунды каскадного
- * барабана, независимо от того насколько юзер прокрутил.
+ * Hero exit. Autoplay-timeline (НЕ scrub). Элементы внутри
+ * .hero_item-mask (overflow:hidden) уезжают yPercent:-100.
  *
- * Раньше был scrub-таймлайн на 300-500px scroll-range. На трекпаде
- * MacBook один свайп даёт ~500px → анимация мгновенная.
- *
- * Маски .hero_item-mask (overflow:hidden) от юзера обрезают
- * уезжающий контент. Анимируем сами content-элементы: planet-img,
- * label, tag (×2), title, subtitle.
- *
- * При возврате юзера вверх (onLeaveBack) играется обратно.
+ * Debug-режим: console.log запуска и найденных элементов —
+ * открой DevTools Console чтобы понять что не так.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -23,45 +16,53 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Юзер дал уникальные классы для каждой строки title/subtitle,
-  // чтобы их можно было анимировать независимо.
+  console.log("[hero-exit] init");
+
   const selectors = [
     ".hero_planet-img",
     ".hero_label",
-    ".hero_tag",          // querySelectorAll → 2 элемента
-    ".hero_title1",       // "Маркетинг"
-    ".hero_title2",       // "для недвижимости"
-    ".hero_subtitle1",    // "полного"
-    ".hero_subtitle2"     // "цикла"
+    ".hero_tag",
+    ".hero_title1",
+    ".hero_title2",
+    ".hero_subtitle1",
+    ".hero_subtitle2"
   ];
 
   const inners = [];
   selectors.forEach((sel) => {
-    document.querySelectorAll(sel).forEach((el) => {
-      // Webflow IX2 (data-w-id) переписывает наш transform/opacity
-      // после gsap.set → анимация не видна визуально. Снимаем IX2.
+    const els = document.querySelectorAll(sel);
+    console.log(`[hero-exit] ${sel} → ${els.length}`);
+    els.forEach((el) => {
       el.removeAttribute("data-w-id");
       el.style.willChange = "transform";
+      // Принудительно ставим стартовое состояние через gsap.set
+      gsap.set(el, { yPercent: 0, clearProps: "transform" });
       inners.push(el);
     });
   });
 
-  // Маски и обёртки — тоже снимаем IX2 (могут ставить overflow/transform
-  // которые ломают reveal)
+  // Маски и обёртки тоже без IX2
   document.querySelectorAll(".hero_item-mask, .hero_subtitle-wrapper, .hero_title-wrapper, .hero_tags-group")
     .forEach((el) => el.removeAttribute("data-w-id"));
 
-  if (inners.length === 0) return;
+  console.log(`[hero-exit] total inners: ${inners.length}`);
+
+  if (inners.length === 0) {
+    console.error("[hero-exit] не нашёл ни одного hero-элемента — проверь имена классов в Webflow");
+    return;
+  }
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Autoplay-timeline. duration 1.5с + stagger 0.3с.
-  // 8 элементов (planet, label, 2×tag, 2×title, 2×subtitle):
-  // total = 1.5 + 0.3*7 = ~3.6с от первого до последнего.
-  // ease 'power2.in' — медленный старт, ускорение к концу.
+  // Двойная защита: повторно снимаем data-w-id через 500ms — иногда
+  // Webflow IX2 восстанавливает атрибуты после нашего init.
+  setTimeout(() => {
+    inners.forEach((el) => el.removeAttribute("data-w-id"));
+  }, 500);
+
   const tl = gsap.timeline({ paused: true });
   tl.to(inners, {
-    yPercent: -100,
+    yPercent: -110,
     duration: 1.5,
     ease: "power2.in",
     stagger: 0.3
@@ -70,7 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
   ScrollTrigger.create({
     trigger: "body",
     start: "top top-=100",
-    onEnter: () => tl.play(),
-    onLeaveBack: () => tl.reverse()
+    onEnter: () => {
+      console.log("[hero-exit] onEnter → play");
+      tl.play();
+    },
+    onLeaveBack: () => {
+      console.log("[hero-exit] onLeaveBack → reverse");
+      tl.reverse();
+    }
   });
 });
