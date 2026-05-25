@@ -1,7 +1,17 @@
 /* Кастомные стили под скрипты. */
 
 
-/* 0. Lenis smooth scroll — нативный body-скролл выключаем,
+/* 0. Резервируем место под scrollbar навсегда.
+   Без этого: preloader/модалки ставят overflow:hidden → scrollbar
+   исчезает → viewport расширяется на ~15px → весь контент дёргается.
+   scrollbar-gutter:stable держит ширину content-area постоянной
+   независимо от того виден scrollbar или нет. */
+html {
+  scrollbar-gutter: stable;
+}
+
+
+/* 0.1 Lenis smooth scroll — нативный body-скролл выключаем,
    Lenis сам управляет позицией. */
 html.lenis, html.lenis body {
   height: auto;
