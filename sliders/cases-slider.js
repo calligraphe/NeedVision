@@ -1,57 +1,24 @@
 /**
- * NEED.VISION — Карусель кейсов
- * =============================
+ * Карусель кейсов на главной.
  *
- * Что делает: горизонтальная карусель кейсов. Управление:
- *               - клик по карточке         → активировать её
- *               - drag/swipe по карточке   → следующий/предыдущий слайд
- *               - клик по точке-индикатору → активировать слайд
- *             Drag привязан НЕ к широкой области `.cases_slider-track`,
- *             а к самим карточкам (`.case_card`) — курсор `grab`
- *             показывает, что тянуть можно именно за карточку.
- *             Активная карточка визуально выделяется (тёмный фон /
- *             белый текст / инвертированное лого).
- *             Дополнительно: кастомный курсор-иконка в зоне
- *             `.case-click-zone` (клик ведёт на страницу кейса).
- *
- * Зависимости:
- *   - GSAP 3.12.x
- *   - Observer
- *
- * Webflow селекторы:
- *   - .cases_slider-track    — движущаяся дорожка слайдов
- *   - .case_card             — отдельные карточки (слайды)
- *   - .cases_slider-dot      — точки-индикаторы
- *   - .cases_slider-dot-full — внутренний заполнитель точки (опасити меняется)
- *   - .case_bg-image         — фоновые изображения каждого слайда
- *   - .cases_fraction-txt    — текст вида "2/5" (текущий/всего)
- *   - .case_card-content     — внутренний контент карточки (меняет цвет/фон)
- *   - .case_tag-text         — тэг карточки (получает класс .active)
- *   - .case_client-logo      — лого клиента (инвертируется)
- *   - .case-click-zone       — зона клика (ведёт на страницу кейса)
- *   - .case-mouse-click      — кастомный курсор-иконка
- *
- * Атрибуты в Webflow:
- *   - У активной карточки `<a href="...">` или `data-href="..."` на
- *     самой карточке — куда вести при клике в `.case-click-zone`.
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sliders/cases-slider.js"></script>
+ * Drag висит на всём .cases_slider-track (а не на каждой карточке) —
+ * тянуть можно за любое место трека, включая промежутки между карточками.
+ * Клик по карточке → активировать её, drag → next/prev, клик по точке → перейти.
+ * Кастомный курсор-иконка в .case-click-zone ведёт на страницу активного кейса.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
-    console.warn("[Need Vision] cases-slider.js: GSAP не загружен");
+    console.warn("cases-slider.js: GSAP не загружен");
     return;
   }
   if (typeof Observer === "undefined") {
-    console.warn("[Need Vision] cases-slider.js: Observer не загружен");
+    console.warn("cases-slider.js: Observer не загружен");
     return;
   }
 
-  // ---- Проверка наличия элементов ----
   const slides = document.querySelectorAll('.case_card');
+  const slidesArr = Array.from(slides);
   const track = document.querySelector('.cases_slider-track');
   if (slides.length === 0 || !track) return;
 
@@ -87,9 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.set(bgImages, { opacity: 0 });
 
-  // ==========================================
-  // КАСТОМНЫЙ КУРСОР В ЗОНЕ КЛИКА
-  // ==========================================
+  // ---- Кастомный курсор в .case-click-zone ----
   if (clickZone && mouseClickIcon) {
     clickZone.style.cursor = 'none';
 
@@ -128,9 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ==========================================
-  // ОСНОВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СЛАЙДЕРА
-  // ==========================================
   function updateSlider(index) {
     if (isAnimating) return;
     isAnimating = true;
@@ -204,9 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ==========================================
-  // ПЕРЕКЛЮЧЕНИЕ
-  // ==========================================
   function nextSlide() {
     if (activeIndex < totalSlides - 1) {
       activeIndex++;
@@ -221,79 +180,75 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ==========================================
-  // КЛИК И DRAG/SWIPE НА КАРТОЧКАХ
-  // ==========================================
-  // Один Observer на каждую `.case_card`:
-  //   - чистый клик (без движения)  → активировать карточку
-  //   - drag/свайп влево            → следующий слайд
-  //   - drag/свайп вправо           → предыдущий слайд
-  // GSAP Observer сам разводит «клик» и «drag»: если за время нажатия
-  // пройдено меньше DRAG_MIN пикселей, событие считается кликом и
-  // вызывается onClick; иначе — направленный onLeft/onRight.
-  slides.forEach((slide, i) => {
-    slide.style.cursor = 'grab';
+  // ---- Drag на всём треке ----
+  // Один Observer на .cases_slider-track ловит drag/свайп в любом месте
+  // (включая зазоры между карточками). Чистый клик (без движения дальше
+  // DRAG_MIN) идёт в onClick — находим карточку через event.target и
+  // активируем её.
+  track.style.cursor = 'grab';
 
-    Observer.create({
-      target: slide,
-      type: "touch,pointer",
-      dragMinimum: DRAG_MIN,
-      tolerance: DRAG_TOLERANCE,
-      onPress: () => { slide.style.cursor = 'grabbing'; },
-      onRelease: () => { slide.style.cursor = 'grab'; },
-      onLeft: () => nextSlide(),
-      onRight: () => prevSlide(),
-      onClick: () => {
-        if (activeIndex !== i) {
-          activeIndex = i;
-          updateSlider(activeIndex);
-        }
+  Observer.create({
+    target: track,
+    type: "touch,pointer",
+    dragMinimum: DRAG_MIN,
+    tolerance: DRAG_TOLERANCE,
+    onPress: () => { track.style.cursor = 'grabbing'; },
+    onRelease: () => { track.style.cursor = 'grab'; },
+    onLeft: () => nextSlide(),
+    onRight: () => prevSlide(),
+    onClick: (self) => {
+      const card = self.event?.target?.closest?.('.case_card');
+      if (!card) return;
+      const i = slidesArr.indexOf(card);
+      if (i >= 0 && i !== activeIndex) {
+        activeIndex = i;
+        updateSlider(activeIndex);
       }
-    });
-
-    // Hover для НЕактивной карточки: фон #8F8E84, текст белый, лого инвертируется.
-    // На активной карточке игнорируем — у неё свой стиль (transparent + белый).
-    const content = slide.querySelector('.case_card-content');
-    const hoverLogo = slide.querySelector('.case_client-logo');
-    if (content) {
-      slide.addEventListener('mouseenter', () => {
-        if (i === activeIndex) return;
-        gsap.to(content, {
-          backgroundColor: HOVER_BG,
-          color: HOVER_COLOR,
-          duration: HOVER_DURATION,
-          ease: "power2.out"
-        });
-        if (hoverLogo) {
-          gsap.to(hoverLogo, {
-            filter: "brightness(0) invert(1)",
-            duration: HOVER_DURATION,
-            ease: "power2.out"
-          });
-        }
-      });
-      slide.addEventListener('mouseleave', () => {
-        if (i === activeIndex) return;
-        gsap.to(content, {
-          backgroundColor: IDLE_BG,
-          color: IDLE_COLOR,
-          duration: HOVER_DURATION,
-          ease: "power2.out"
-        });
-        if (hoverLogo) {
-          gsap.to(hoverLogo, {
-            filter: "brightness(0) invert(0)",
-            duration: HOVER_DURATION,
-            ease: "power2.out"
-          });
-        }
-      });
     }
   });
 
-  // ==========================================
-  // КЛИКИ ПО ТОЧКАМ-ИНДИКАТОРАМ
-  // ==========================================
+  // Hover для НЕактивной карточки: фон #8F8E84, текст белый, лого инвертируется.
+  // На активной игнорируем — у неё свой стиль (transparent + белый).
+  slides.forEach((slide, i) => {
+    const content = slide.querySelector('.case_card-content');
+    const hoverLogo = slide.querySelector('.case_client-logo');
+    if (!content) return;
+
+    slide.addEventListener('mouseenter', () => {
+      if (i === activeIndex) return;
+      gsap.to(content, {
+        backgroundColor: HOVER_BG,
+        color: HOVER_COLOR,
+        duration: HOVER_DURATION,
+        ease: "power2.out"
+      });
+      if (hoverLogo) {
+        gsap.to(hoverLogo, {
+          filter: "brightness(0) invert(1)",
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+      }
+    });
+    slide.addEventListener('mouseleave', () => {
+      if (i === activeIndex) return;
+      gsap.to(content, {
+        backgroundColor: IDLE_BG,
+        color: IDLE_COLOR,
+        duration: HOVER_DURATION,
+        ease: "power2.out"
+      });
+      if (hoverLogo) {
+        gsap.to(hoverLogo, {
+          filter: "brightness(0) invert(0)",
+          duration: HOVER_DURATION,
+          ease: "power2.out"
+        });
+      }
+    });
+  });
+
+  // ---- Точки-индикаторы ----
   dots.forEach((dot, i) => {
     dot.addEventListener('click', () => {
       if (activeIndex !== i) {
