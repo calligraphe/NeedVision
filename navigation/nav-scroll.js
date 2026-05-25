@@ -62,63 +62,64 @@ function bootNavScroll() {
   const TOP_DELAY = 0.2;
 
   // top → y (translateY): composite, без layout reflow.
-  // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
+  // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw).
+  // expo.out — премиальный settle: быстрая фаза старта и долгая мягкая
+  // доводка к финалу. На scrub'е это даёт «приземление», а не «удар».
   compressTl.to(".nav-logo_img", {
     width: "62%",
     y: "4vw",
-    duration: 0.25,
-    ease: "power2.out"
+    duration: 0.35,
+    ease: "expo.out"
   }, 0);
 
   compressTl.to(".nav-btm", {
     marginTop: "0.55vw",
-    duration: 0.35,
-    ease: "power2.out"
+    duration: 0.45,
+    ease: "expo.out"
   }, 0);
 
   compressTl.to(".menu_overlay-content", {
     width: "29vw",
     backgroundColor: "#ffffff",
-    duration: 0.5,
-    ease: "power2.out"
+    duration: 0.65,
+    ease: "expo.out"
   }, TOP_DELAY);
 
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
-    duration: 0.5,
-    ease: "power2.out"
+    duration: 0.6,
+    ease: "power2.inOut"
   }, TOP_DELAY);
 
   compressTl.to(".menu_profit-badge", {
     width: "auto",
     opacity: 1,
     margin: "0 0.5vw",
-    duration: 0.5,
-    ease: "power2.out"
+    duration: 0.65,
+    ease: "expo.out"
   }, TOP_DELAY);
 
   compressTl.to(".nav-profit-item", {
     opacity: 1,
     y: 0,
-    duration: 0.8,
+    duration: 0.9,
     stagger: 0.1,
-    ease: "power2.out"
+    ease: "expo.out"
   }, TOP_DELAY);
 
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
-    duration: 0.4,
-    ease: "power2.out"
+    duration: 0.5,
+    ease: "power2.inOut"
   }, TOP_DELAY);
 
-  // Иконки/таймер уходят в opacity + height одновременно за первые
-  // ~100px скролла. Высота тоже схлопывается, чтобы .nav_bar не
-  // оставлял пустой отступ
+  // Иконки/таймер уходят в opacity + height за первые ~100px скролла.
+  // Чуть длиннее — резкого «обрубания» больше нет
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     opacity: 0,
     height: 0,
-    duration: 0.15,
-    ease: "power2.out"
+    duration: 0.25,
+    ease: "power2.inOut"
   }, 0);
 
 
@@ -139,8 +140,9 @@ function bootNavScroll() {
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
-    // Скролл двигает proxy через scrub:1 → плавно. Когда меню открыто,
-    // игнорируем апдейты, чтобы не перебивать клик-анимацию.
+    // Скролл двигает proxy через scrub'1.2 → плавная inertia-доводка
+    // поверх Lenis. Когда меню открыто, игнорируем апдейты, чтобы не
+    // перебивать клик-анимацию.
     gsap.to(compressState, {
       progress: 1,
       ease: "none",
@@ -148,7 +150,7 @@ function bootNavScroll() {
         trigger: "body",
         start: "top top",
         end: "+=800",
-        scrub: 1
+        scrub: 1.2
       },
       onUpdate: () => {
         if (!menuOpen) {
@@ -160,13 +162,14 @@ function bootNavScroll() {
 
     // Инверсия над .stages (бежевая секция).
     // .to (а не .fromTo) — захватываем текущее состояние, не пробивая
-    // forced from-value поверх compressTl
+    // forced from-value поверх compressTl. scrub:1.2 вместо true —
+    // переход цветов «плывёт» а не привязан мгновенно к scroll-position.
     navInvertTl = gsap.timeline({
       scrollTrigger: {
         trigger: ".stages",
         start: "top 85%",
         end: "top 25%",
-        scrub: true
+        scrub: 1.2
       }
     });
 
@@ -190,10 +193,10 @@ function bootNavScroll() {
   // если всё ещё в зоне инверсии.
   const INVERT_DARK  = { bg: "#040101", color: "#ffffff", logo: "invert(1)", icon: "invert(0)" };
   const INVERT_LIGHT = { bg: "#ffffff", color: "#000000", logo: "invert(0)", icon: "invert(1)" };
-  const INVERT_OVERRIDE_DURATION = 0.5;
+  const INVERT_OVERRIDE_DURATION = 0.7;
 
   function applyInvertState(state) {
-    const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "power2.out", overwrite: "auto" };
+    const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "expo.out", overwrite: "auto" };
     gsap.to(".menu_overlay-content", { ...opts, backgroundColor: state.bg });
     gsap.to(".menu_control-bar *",   { ...opts, color: state.color });
     gsap.to(".nav-logo_img",         { ...opts, filter: state.logo });
@@ -232,29 +235,30 @@ function bootNavScroll() {
       if (needsCompress) {
         menuTl.to(compressTl, {
           progress: 1,
-          duration: 0.95,
-          ease: "power2.inOut",
+          duration: 1.1,
+          ease: "power3.inOut",
           overwrite: true
         }, 0);
       }
 
-      // -0.2 перекрытие: последняя четверть сжатия и первая четверть
-      // раскрытия идут одновременно — переход цельный, без зазора
-      const dropdownPos = needsCompress ? "-=0.2" : 0;
+      // -0.35 перекрытие: последняя треть сжатия и первая треть
+      // раскрытия идут одновременно — переход цельный, без зазора.
+      // expo.out на дропдауне даёт «приземление» вместо тормоза.
+      const dropdownPos = needsCompress ? "-=0.35" : 0;
 
       menuTl.to(menuPanel, {
         height: "auto",
         opacity: 1,
-        duration: 1.1,
-        ease: "power2.out"
+        duration: 1.25,
+        ease: "expo.out"
       }, dropdownPos);
 
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 1,
           pointerEvents: "auto",
-          duration: 0.9,
-          ease: "power2.out"
+          duration: 1.05,
+          ease: "expo.out"
         }, "<");
       }
 
@@ -266,12 +270,12 @@ function bootNavScroll() {
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.2,
-          ease: "power2.in",
+          duration: 0.3,
+          ease: "power3.in",
           overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "CLOSE";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.4, ease: "expo.out" });
           }
         });
       }
@@ -290,31 +294,32 @@ function bootNavScroll() {
 
       menuTl = gsap.timeline();
 
+      // power3.inOut на закрытии — мягкий выход без резкого clip'а
       menuTl.to(menuPanel, {
         height: 0,
         opacity: 0,
-        duration: 0.75,
-        ease: "power2.in"
+        duration: 0.9,
+        ease: "power3.inOut"
       }, 0);
 
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 0,
           pointerEvents: "none",
-          duration: 0.7,
-          ease: "power2.in"
+          duration: 0.85,
+          ease: "power3.inOut"
         }, 0);
       }
 
       // Возврат к scroll-state. У верха страницы — плавно раскрываемся
       // обратно. У низа или в static-режиме — no-op (progress уже 1).
-      // -0.3 перекрытие: декомпрессия стартует пока дропдаун ещё схлопывается
+      // -0.5 перекрытие: декомпрессия стартует пока дропдаун ещё схлопывается
       menuTl.to(compressTl, {
         progress: compressState.progress,
-        duration: 0.95,
-        ease: "power2.inOut",
+        duration: 1.1,
+        ease: "power3.inOut",
         overwrite: true
-      }, "-=0.3");
+      }, "-=0.5");
 
       if (menuIcon) {
         menuIcon.classList.remove("is-open");
@@ -324,12 +329,12 @@ function bootNavScroll() {
       if (menuTxt) {
         gsap.to(menuTxt, {
           opacity: 0,
-          duration: 0.2,
-          ease: "power2.in",
+          duration: 0.3,
+          ease: "power3.in",
           overwrite: "auto",
           onComplete: () => {
             menuTxt.textContent = "Menu";
-            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
+            gsap.to(menuTxt, { opacity: 1, duration: 0.4, ease: "expo.out" });
           }
         });
       }
