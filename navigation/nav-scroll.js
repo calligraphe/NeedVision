@@ -70,13 +70,14 @@ function bootNavScroll() {
   ix2Targets.forEach((el) => el?.removeAttribute?.("data-w-id"));
 
 
-  // ---- GPU-слой для лого (без артефактов на scrub-reverse) ----
-  // translateZ(0) форсит постоянный composite layer → браузер не
-  // пересоздаёт слой при каждом scroll-update, нет flash/ghost.
+  // ---- GPU-слой для лого ----
+  // НЕ ставим transform inline — GSAP сам через force3D:true делает
+  // translateZ(0) в каждом tween. Если ставить руками — GSAP читает
+  // matrix3d с translateZ и пытается интерполировать → конфликт.
   if ($logo) {
-    $logo.style.willChange = "transform, width";
+    $logo.style.willChange = "transform";
     $logo.style.backfaceVisibility = "hidden";
-    $logo.style.transform = "translateZ(0)";
+    $logo.style.transformOrigin = "left center";
   }
 
 
@@ -102,13 +103,20 @@ function bootNavScroll() {
   // Лого стартует сразу (pos 0). Плашка, текст, profit, инверсия —
   // на TOP_DELAY, чтобы лого успело «приземлиться» до перекраски.
   const compressTl = gsap.timeline({ paused: true });
-  const TOP_DELAY = 0.2;
+  // TOP_DELAY уменьшен с 0.2 до 0.1 — плашка начинает меняться когда
+  // лого прошёл ~30% пути, не ждёт 60%. Gap между фазами стал слитный.
+  const TOP_DELAY = 0.1;
 
+  // scale вместо width: width = layout reflow + img-resize = «призрак»
+  // при scrub-reverse. scale = composite-only, GPU слой, плавный
+  // reverse без артефактов. transformOrigin: left center — сжимается
+  // влево, как и при width:62%.
   compressTl.to($logo, {
-    width: "62%",
+    scale: 0.62,
     y: "4vw",
     duration: 0.35,
-    ease: "expo.out"
+    ease: "expo.out",
+    force3D: true
   }, 0);
 
   compressTl.to($navBtm, {
