@@ -1,19 +1,19 @@
 /**
- * Секция «Этапы». Премиальный word-level reveal вместо плоского mask-slide.
+ * Секция «Этапы». Hybrid: визуал секции привязан к скроллу,
+ * смена этапов — автоплеем.
  *
- * Тексты разбиваются на слова, каждое слово получает свой stagger:
- *  — на уходе: yPercent -100 + skewY -4 + blur 6 + opacity 0,
- *    каскадом справа-налево (поток уносит слова за горизонт);
- *  — на появлении: yPercent 100 → 0 + blur 6 → 0 + opacity 0 → 1,
- *    обратный stagger (слова собираются из тумана слева-направо).
+ * SCROLL-DRIVEN (scrub):
+ *  — фон about + фонарик при входе в секцию;
+ *  — картинки .stages_img: reveal + intra-section parallax.
  *
- * Картинки .stages_img: scrub-driven reveal + лёгкий parallax-сдвиг
- * пока секция в pin (одни картинки едут чуть быстрее других).
+ * AUTOPLAY (по достижению scroll-порога — играется тайм-лайн целиком):
+ *  — смена текстов через word-split + stagger + blur;
+ *  — смена лейбла «ЭТАП N»;
+ *  — переключение активной точки пагинации.
  *
- * Лейбл «ЭТАП N» — счётчик-морфинг через сам text-mask + char-stagger.
- *
- * Пагинация — независимый ScrollTrigger.onUpdate с прямым opacity
- * (та же надёжная схема что в cases-slider).
+ * Зачем автоплей: при scrub текст «дёргался» вслед за колесом и
+ * выглядел suetlivo. Автоплей даёт уверенный, всегда одинаковый
+ * переход за фикс. duration.
  */
 
 function bootStagesAnimation() {
@@ -32,7 +32,7 @@ function bootStagesAnimation() {
   gsap.registerPlugin(ScrollTrigger);
 
 
-  // ---- Фон секции + фонарик на входе ----
+  // ---- Фон секции + фонарик на входе (scrub) ----
   const bgChangeTl = gsap.timeline({
     scrollTrigger: {
       trigger: ".stages",
@@ -46,10 +46,7 @@ function bootStagesAnimation() {
   bgChangeTl.to(".about-wrapper", { backgroundColor: "#FFFBF2", duration: 0.7 }, 0.3);
 
 
-  // ---- Картинки: reveal + лёгкий intra-section parallax ----
-  // Reveal: y + blur + scale при входе во вьюпорт.
-  // Parallax: пока секция в pin, картинки чуть смещаются друг
-  // относительно друга — создаёт живое многоплановое движение.
+  // ---- Картинки: reveal + intra-section parallax (scrub) ----
   const stageImages = gsap.utils.toArray(".stages_img");
 
   stageImages.forEach((img, idx) => {
@@ -77,11 +74,10 @@ function bootStagesAnimation() {
       }
     });
 
-    // Parallax-сдвиг: чётные картинки едут вверх медленнее,
-    // нечётные — быстрее. Размах ±60px.
+    // Parallax: чётные/нечётные на разной скорости — многоплановое движение
     const parallaxOffset = idx % 2 === 0 ? -60 : 60;
     gsap.to(img, {
-      yPercent: parallaxOffset / 10,    // ~ -6% / +6% от высоты
+      yPercent: parallaxOffset / 10,
       ease: "none",
       scrollTrigger: {
         trigger: img,
@@ -102,7 +98,7 @@ function bootStagesAnimation() {
   if (wrappers.length === 0) return;
 
 
-  // ---- Пагинация (та же надёжная схема что в cases-slider) ----
+  // ---- Пагинация (прямой opacity с !important — IX2-proof) ----
   const dotInners = [];
   dots.forEach((dot) => {
     dot.removeAttribute("data-w-id");
@@ -127,43 +123,18 @@ function bootStagesAnimation() {
 
   setActiveDot(0);
 
-  let lastDotIndex = 0;
-  ScrollTrigger.create({
-    trigger: ".stages",
-    start: "top top",
-    end: "bottom bottom",
-    onUpdate: (self) => {
-      const idx = Math.min(
-        Math.floor(self.progress * wrappers.length),
-        wrappers.length - 1
-      );
-      if (idx !== lastDotIndex) {
-        lastDotIndex = idx;
-        setActiveDot(idx);
-      }
-    },
-    onRefresh: () => setActiveDot(lastDotIndex)
-  });
 
-
-  // ---- Word split на текстах ----
-  // Разбиваем содержимое .stages_title, .stages_subtitle, .stages_p-text
-  // на отдельные <span class="stages_word">word</span>. Каждое слово
-  // станет независимой анимируемой единицей с микро-stagger.
-  //
-  // display:inline-block на span'е держит layout как у обычного
-  // inline-flow, но позволяет transform на слове.
+  // ---- Word split ----
+  // Каждый текст-блок разбиваем на <span class="stages_word">
+  // с display:inline-block. Слова станут независимыми единицами
+  // для stagger-анимации.
   function splitToWords(el) {
     if (el.dataset.splitDone === "1") return;
     const text = el.textContent;
     if (!text || !text.trim()) return;
 
-    // Сохраняем innerHTML для случая если внутри есть вложенные
-    // элементы (например <br>, <span>). Простой split по пробелам
-    // покрывает 95% случаев, для остального — fallback.
     if (el.children.length > 0 && el.children.length !== el.querySelectorAll("br").length) {
-      // Есть нетривиальный HTML внутри — не трогаем
-      return;
+      return;        // нетривиальный HTML — не трогаем
     }
 
     const words = text.trim().split(/\s+/);
@@ -188,10 +159,10 @@ function bootStagesAnimation() {
   wrappers.forEach((wrap, index) => {
     const words = wrap.querySelectorAll(".stages_word");
     if (index === 0) {
-      gsap.set(words, { yPercent: 0, opacity: 1, filter: "blur(0px)", skewY: 0 });
+      gsap.set(words, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
       gsap.set(wrap, { autoAlpha: 1 });
     } else {
-      gsap.set(words, { yPercent: 100, opacity: 0, filter: "blur(6px)", skewY: 4 });
+      gsap.set(words, { yPercent: 100, opacity: 0, filter: "blur(8px)" });
       gsap.set(wrap, { autoAlpha: 0 });
     }
   });
@@ -199,82 +170,111 @@ function bootStagesAnimation() {
   if (stepLabel) gsap.set(stepLabel, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
 
 
-  // ---- Главный scrub-таймлайн ----
-  const tlStages = gsap.timeline({
-    scrollTrigger: {
-      trigger: ".stages",
-      start: "top top",
-      end: "bottom bottom",
-      scrub: 1.5
-    }
-  });
+  // ---- Autoplay-переход между этапами ----
+  // Запускается когда scroll-порог пересечён. fromIdx/toIdx могут
+  // отличаться больше чем на 1 (быстрый скролл) — анимация всё равно
+  // корректно переключит wrapper'ы.
+  let currentIdx = 0;
+  let activeTl = null;
 
-  wrappers.forEach((wrap, i) => {
-    if (i >= wrappers.length - 1) return;
+  function playTransition(fromIdx, toIdx) {
+    if (fromIdx === toIdx) return;
+    if (activeTl) activeTl.kill();
 
-    const nextWrap = wrappers[i + 1];
-    const currentWords = wrap.querySelectorAll(".stages_word");
-    const nextWords = nextWrap.querySelectorAll(".stages_word");
+    const fromWords = wrappers[fromIdx].querySelectorAll(".stages_word");
+    const toWords = wrappers[toIdx].querySelectorAll(".stages_word");
+    const forward = toIdx > fromIdx;
 
-    const stepName = `step_${i}`;
+    // Stagger 'start' для forward (поток слева-направо), 'end' для backward
+    const staggerFrom = forward ? "start" : "end";
 
-    tlStages.set(nextWrap, { autoAlpha: 1 }, stepName);
+    activeTl = gsap.timeline({
+      onComplete: () => {
+        currentIdx = toIdx;
+      }
+    });
 
-    // УХОД: каждое слово yPercent -100 + skewY + blur + opacity.
-    // Stagger 0.025s + ease power3.inOut → каскад «вверх по волне»
-    tlStages.to(currentWords, {
-      yPercent: -100,
-      skewY: -4,
+    // Уход текущих: вверх (forward) или вниз (backward)
+    activeTl.to(fromWords, {
+      yPercent: forward ? -100 : 100,
       opacity: 0,
-      filter: "blur(6px)",
-      duration: 1.0,
-      stagger: { each: 0.025, from: "start" },
+      filter: "blur(8px)",
+      duration: 0.85,
+      stagger: { each: 0.022, from: staggerFrom },
       ease: "power3.inOut"
-    }, stepName);
+    }, 0);
 
-    // ПОЯВЛЕНИЕ: обратный stagger, чуть длиннее.
-    // +0.2 опережение — без зазора между фазами
-    tlStages.fromTo(nextWords,
-      { yPercent: 100, skewY: 4, opacity: 0, filter: "blur(6px)" },
+    // Показываем следующий wrapper
+    activeTl.set(wrappers[toIdx], { autoAlpha: 1 }, 0);
+
+    // Появление новых: снизу (forward) или сверху (backward)
+    activeTl.fromTo(toWords,
+      {
+        yPercent: forward ? 100 : -100,
+        opacity: 0,
+        filter: "blur(8px)"
+      },
       {
         yPercent: 0,
-        skewY: 0,
         opacity: 1,
         filter: "blur(0px)",
-        duration: 1.2,
-        stagger: { each: 0.03, from: "start" },
+        duration: 1.05,
+        stagger: { each: 0.028, from: staggerFrom },
         ease: "power3.out"
       },
-      `${stepName}+=0.2`);
+      0.35);
 
-    // Лейбл «ЭТАП N» — текст и blur+fade-морфинг
+    // Скрываем from-wrapper после ухода
+    activeTl.set(wrappers[fromIdx], { autoAlpha: 0 }, 0.85);
+
+    // Лейбл «ЭТАП N» — blur-морфинг
     if (stepLabel) {
-      tlStages.to(stepLabel, {
-        yPercent: -100,
+      activeTl.to(stepLabel, {
+        yPercent: forward ? -100 : 100,
         opacity: 0,
         filter: "blur(4px)",
-        duration: 0.45,
+        duration: 0.4,
         ease: "power3.in"
-      }, stepName);
+      }, 0);
 
-      tlStages.set(stepLabel, {
-        textContent: `ЭТАП ${i + 2}`,
-        yPercent: 100,
+      activeTl.set(stepLabel, {
+        textContent: `ЭТАП ${toIdx + 1}`,
+        yPercent: forward ? 100 : -100,
         filter: "blur(4px)",
         opacity: 0
-      }, `${stepName}+=0.45`);
+      }, 0.4);
 
-      tlStages.to(stepLabel, {
+      activeTl.to(stepLabel, {
         yPercent: 0,
         opacity: 1,
         filter: "blur(0px)",
-        duration: 0.55,
+        duration: 0.5,
         ease: "power3.out"
-      }, `${stepName}+=0.45`);
+      }, 0.4);
     }
 
-    tlStages.set(wrap, { autoAlpha: 0 });
-    tlStages.to({}, { duration: 0.5 });
+    // Пагинация — мгновенный switch (а не tween) — выглядит уверенно
+    setActiveDot(toIdx);
+  }
+
+
+  // ---- Триггер: scroll-position → idx → playTransition ----
+  // Один ScrollTrigger.onUpdate определяет текущий этап по progress
+  // секции. При смене idx запускается autoplay-переход.
+  ScrollTrigger.create({
+    trigger: ".stages",
+    start: "top top",
+    end: "bottom bottom",
+    onUpdate: (self) => {
+      const idx = Math.min(
+        Math.floor(self.progress * wrappers.length),
+        wrappers.length - 1
+      );
+      if (idx !== currentIdx) {
+        playTransition(currentIdx, idx);
+      }
+    },
+    onRefresh: () => setActiveDot(currentIdx)
   });
 }
 
