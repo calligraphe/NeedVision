@@ -43,7 +43,7 @@ function bootNavScroll() {
     whiteSpace: "nowrap"
   });
 
-  gsap.set(".nav-profit-item", { opacity: 0, y: 20 });
+  gsap.set(".nav-profit-item", { opacity: 0, y: "1.39vw" });
 
   // Дропдаун схлопнут, backdrop невидим
   gsap.set(".menu_dropdown-list", { height: 0, opacity: 0 });
@@ -155,7 +155,7 @@ function bootNavScroll() {
     // проигрывается за фикс. время, не дёргается под каждый touch-tick.
     ScrollTrigger.create({
       trigger: "body",
-      start: "50px top",
+      start: "3.47vw top",
       onEnter: () => {
         if (menuOpen) return;
         compressTl.play();
@@ -176,7 +176,7 @@ function bootNavScroll() {
       scrollTrigger: {
         trigger: "body",
         start: "top top",
-        end: "+=800",
+        end: "+=55.56vw",
         scrub: 1
       },
       onUpdate: () => {

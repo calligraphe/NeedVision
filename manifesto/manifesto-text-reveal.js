@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   gsap.registerPlugin(ScrollTrigger);
 
   gsap.set(".man-anim__txt", {
-    y: 30,
+    y: "2.08vw",
     opacity: 0,
     filter: "blur(20px)"
   });
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     scrollTrigger: {
       trigger: ".manifesto",
       start: "top center",
-      end: "+=600",
+      end: "+=41.67vw",
       scrub: 1
     }
   });

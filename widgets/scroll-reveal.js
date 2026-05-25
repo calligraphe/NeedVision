@@ -10,7 +10,7 @@
 
 (() => {
   const DURATION = 1.2;
-  const START_Y = 60;
+  const START_Y = "4.17vw";   // 60px в 1440 = 4.17vw, скейлится
   const START_TRIGGER = "top 85%";
 
   function boot() {

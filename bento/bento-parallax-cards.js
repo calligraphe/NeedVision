@@ -56,7 +56,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Фаза 1 — появление
   cards.forEach(card => {
     const attrStart = card.getAttribute('data-start-y');
-    const startY = attrStart ? parseFloat(attrStart) : 600;
+    // 600px в дизайне 1440 = 41.67vw — скейлится с шириной экрана
+    const startY = attrStart ? attrStart : "41.67vw";
 
     tl.fromTo(card, {
       y: startY,
@@ -77,7 +78,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // половину фазы — карточка уезжает заметно, потом тает.
   cards.forEach(card => {
     const attrEnd = card.getAttribute('data-end-y');
-    const endY = attrEnd ? parseFloat(attrEnd) : -1200;
+    // -1200px в 1440 = -83.33vw
+    const endY = attrEnd ? attrEnd : "-83.33vw";
 
     const attrDelay = card.getAttribute('data-exit-delay');
     const exitDelay = attrDelay ? parseFloat(attrDelay) : 0;

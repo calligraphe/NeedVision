@@ -270,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Уход
     tl.to(elements, {
-      y: -10,
+      y: "-0.69vw",
       opacity: 0,
       filter: "blur(6px)",
       duration: 0.4,
@@ -293,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Появление
     tl.fromTo(elements,
       {
-        y: 10,
+        y: "0.69vw",
         opacity: 0,
         filter: "blur(6px)"
       },

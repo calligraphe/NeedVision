@@ -54,7 +54,7 @@ function bootStagesAnimation() {
     img.style.backfaceVisibility = "hidden";
 
     gsap.set(img, {
-      y: 120,
+      y: "8.33vw",
       opacity: 0,
       scale: 1.08,
       filter: "blur(12px)"

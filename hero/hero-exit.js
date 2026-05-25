@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Хотя бы один из трёх гарантированно скроет элемент за маской.
   tl.to(inners, {
     yPercent: -110,
-    y: -200,
+    y: "-13.89vw",
     opacity: 0,
     duration: 1.5,
     ease: "power2.in",
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   ScrollTrigger.create({
     trigger: "body",
-    start: "top top-=100",
+    start: "top top-=6.94vw",
     onEnter: () => {
       console.log("[hero-exit] onEnter → play");
       tl.play();

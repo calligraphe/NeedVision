@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   gsap.registerPlugin(ScrollTrigger);
 
   gsap.set(logoRevealTexts, {
-    y: 100,
+    y: "6.94vw",
     opacity: 0,
     filter: "blur(20px)"
   });

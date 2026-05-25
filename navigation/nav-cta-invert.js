@@ -77,8 +77,8 @@ function bootNavCtaInvert() {
   orangeSections.forEach(section => {
     ScrollTrigger.create({
       trigger: section,
-      start: "top 80px",
-      end: "bottom 80px",
+      start: "top 5.56vw",
+      end: "bottom 5.56vw",
       onToggle: (self) => {
         if (self.isActive) activeOrange.add(section);
         else activeOrange.delete(section);
@@ -104,7 +104,7 @@ function bootNavCtaInvert() {
   const footerEl = document.querySelector(".footer") || document.querySelector("footer");
   if (footerEl) {
     gsap.to(".nav-cta__btn", {
-      y: 150,
+      y: "10.42vw",
       opacity: 0,
       pointerEvents: "none",
       ease: "none",

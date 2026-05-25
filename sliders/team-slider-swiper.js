@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tl = gsap.timeline();
 
     tl.to([roleMonitor, quoteMonitor], {
-      y: -20,
+      y: "-1.39vw",
       opacity: 0,
       duration: 0.3,
       ease: "power2.in"
@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (quoteMonitor) quoteMonitor.innerText = newQuote;
     });
 
-    tl.set([roleMonitor, quoteMonitor], { y: 20 });
+    tl.set([roleMonitor, quoteMonitor], { y: "1.39vw" });
     tl.to([roleMonitor, quoteMonitor], {
       y: 0,
       opacity: 1,
