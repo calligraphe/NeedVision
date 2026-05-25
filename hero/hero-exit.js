@@ -63,8 +63,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 500);
 
   const tl = gsap.timeline({ paused: true });
+  // Тройной транспорт: yPercent (по высоте элемента) + y в px (на случай
+  // если высота 0 / element inline / yPercent не считается) + opacity.
+  // Хотя бы один из трёх гарантированно скроет элемент за маской.
   tl.to(inners, {
     yPercent: -110,
+    y: -200,
+    opacity: 0,
     duration: 1.5,
     ease: "power2.in",
     stagger: 0.3
