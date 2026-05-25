@@ -19,6 +19,14 @@ html.lenis, html.lenis body {
   pointer-events: none;
 }
 
+/* Generic fade-in: всё что в Webflow помечено data-smooth="true" —
+   стартует невидимым, scroll-reveal.js его проявит. Без этой страховки
+   контент мигает до того как JS отстреляет ScrollTrigger. */
+[data-smooth="true"] {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
 
 /* 0.1 Page transition overlay — fade между страницами.
    Поверх всего кроме preloader'а (preloader 99999). */

@@ -13,10 +13,13 @@
  */
 
 (() => {
-  // Lenis defaults уже хороши на трекпаде и мыши. Свои lerp/multiplier
-  // не ставим — мелкие отклонения на разных устройствах ощущаются
-  // как «дёрганость» вместо плавности.
-  const ANCHOR_DURATION = 1.2;     // секунды доводки до якоря
+  // Cinematic feel — duration mode с явным expo.out easing.
+  // wheelMultiplier 0.6 → шаг колеса мягче, lenis ленится тянуть позицию.
+  // На трекпаде MacOS и mouse wheel работает одинаково плавно.
+  const SCROLL_DURATION = 2.5;
+  const WHEEL_MULTIPLIER = 0.6;
+  const ANCHOR_DURATION = 1.4;
+  const EXPO_OUT = (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t));
 
   function boot() {
     if (typeof Lenis === "undefined") {
@@ -25,8 +28,13 @@
     }
 
     const lenis = new Lenis({
-      smoothWheel: true,
-      smoothTouch: false     // touch на мобилке оставляем нативным
+      duration: SCROLL_DURATION,
+      easing: EXPO_OUT,
+      direction: "vertical",
+      gestureDirection: "vertical",
+      smooth: true,
+      smoothTouch: false,
+      wheelMultiplier: WHEEL_MULTIPLIER
     });
 
     // Sync со ScrollTrigger — без этого scrub-таймлайны (stages,
@@ -61,8 +69,7 @@
       e.preventDefault();
       lenis.scrollTo(target, {
         duration: ANCHOR_DURATION,
-        // expo-кривая: быстрый старт, мягкая доводка
-        easing: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
+        easing: EXPO_OUT
       });
     });
   }
