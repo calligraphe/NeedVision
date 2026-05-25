@@ -14,3 +14,4 @@
 *.local
 .remember/
 .claude/
+.wrangler/
