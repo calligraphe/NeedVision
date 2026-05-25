@@ -34,10 +34,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const inners = [];
   selectors.forEach((sel) => {
     document.querySelectorAll(sel).forEach((el) => {
+      // Webflow IX2 (data-w-id) переписывает наш transform/opacity
+      // после gsap.set → анимация не видна визуально. Снимаем IX2.
+      el.removeAttribute("data-w-id");
       el.style.willChange = "transform";
       inners.push(el);
     });
   });
+
+  // Маски и обёртки — тоже снимаем IX2 (могут ставить overflow/transform
+  // которые ломают reveal)
+  document.querySelectorAll(".hero_item-mask, .hero_subtitle-wrapper, .hero_title-wrapper, .hero_tags-group")
+    .forEach((el) => el.removeAttribute("data-w-id"));
 
   if (inners.length === 0) return;
 
