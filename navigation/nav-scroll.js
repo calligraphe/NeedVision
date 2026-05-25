@@ -132,6 +132,10 @@ function bootNavScroll() {
   const compressState = { progress: isStaticNav ? 1 : 0 };
   let menuOpen = false;
 
+  // Объявлен снаружи — openMenu/closeMenu проверяют через него,
+  // находимся ли мы сейчас в зоне инверсии над .stages.
+  let navInvertTl = null;
+
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
@@ -157,7 +161,7 @@ function bootNavScroll() {
     // Инверсия над .stages (бежевая секция).
     // .to (а не .fromTo) — захватываем текущее состояние, не пробивая
     // forced from-value поверх compressTl
-    const navInvertTl = gsap.timeline({
+    navInvertTl = gsap.timeline({
       scrollTrigger: {
         trigger: ".stages",
         start: "top 85%",
@@ -179,6 +183,27 @@ function bootNavScroll() {
   }
 
 
+  // ---- Override инверсии при открытом меню ----
+  // Над .stages плашка чёрная с белым текстом (navInvertTl). Когда юзер
+  // открывает меню в этой зоне — плашка должна вернуться к обычному
+  // сжатому виду (белая, чёрный текст). При закрытии — обратно к dark
+  // если всё ещё в зоне инверсии.
+  const INVERT_DARK  = { bg: "#040101", color: "#ffffff", logo: "invert(1)", icon: "invert(0)" };
+  const INVERT_LIGHT = { bg: "#ffffff", color: "#000000", logo: "invert(0)", icon: "invert(1)" };
+  const INVERT_OVERRIDE_DURATION = 0.5;
+
+  function applyInvertState(state) {
+    const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "power2.out", overwrite: "auto" };
+    gsap.to(".menu_overlay-content", { ...opts, backgroundColor: state.bg });
+    gsap.to(".menu_control-bar *",   { ...opts, color: state.color });
+    gsap.to(".nav-logo_img",         { ...opts, filter: state.logo });
+    gsap.to(".nav-icon",             { ...opts, filter: state.icon });
+  }
+
+  function isInInvertZone() {
+    return !!navInvertTl?.scrollTrigger && navInvertTl.scrollTrigger.progress > 0.5;
+  }
+
   // ---- Меню (открытие/закрытие) ----
   const menuBtn = document.querySelector(".nav-menu");
   const menuPanel = document.querySelector(".menu_dropdown-list");
@@ -194,6 +219,9 @@ function bootNavScroll() {
     function openMenu() {
       menuOpen = true;
       if (menuTl) menuTl.kill();
+
+      // Если меню открывают над .stages — перебиваем navInvertTl на light
+      if (isInInvertZone()) applyInvertState(INVERT_LIGHT);
 
       // Если плашка ещё не сжата — сначала визуально сжимаем,
       // только потом раскрываем дропдаун. Иначе сразу к дропдауну.
@@ -252,6 +280,9 @@ function bootNavScroll() {
     function closeMenu() {
       if (menuTl) menuTl.kill();
 
+      // Если всё ещё в зоне инверсии — вернуть плашку в dark
+      if (isInInvertZone()) applyInvertState(INVERT_DARK);
+
       // menuOpen=false ставим в onComplete всего timeline — пока идёт
       // close, scroll-onUpdate не перебивает tween на compressTl.
       menuTl = gsap.timeline({
@@ -303,8 +334,19 @@ function bootNavScroll() {
       }
     }
 
+    // stopImmediatePropagation — Webflow IX2 может висеть на той же кнопке
+    // и перебивать наш toggle. Debounce 120ms — защита от ghost-click
+    // (touchend + click дублирующиеся на тач-устройствах и от случайного
+    // дабл-тапа во время анимации).
+    let lastMenuClickAt = 0;
+    const MENU_CLICK_DEBOUNCE_MS = 120;
+
     menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
+      const now = performance.now();
+      if (now - lastMenuClickAt < MENU_CLICK_DEBOUNCE_MS) return;
+      lastMenuClickAt = now;
       menuOpen ? closeMenu() : openMenu();
     });
 

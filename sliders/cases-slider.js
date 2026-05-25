@@ -1,9 +1,10 @@
 /**
  * Карусель кейсов на главной.
  *
- * Drag висит на всём .cases_slider-track (а не на каждой карточке) —
- * тянуть можно за любое место трека, включая промежутки между карточками.
- * Клик по карточке → активировать её, drag → next/prev, клик по точке → перейти.
+ * Drag висит на .case-drag-zone (отдельный overlay поверх трека) — тянуть
+ * можно за всю эту зону. Клик по карточке → активировать (находим карточку
+ * под курсором через elementFromPoint, потому что zone её перекрывает).
+ * Drag → next/prev, клик по точке → перейти.
  * Кастомный курсор-иконка в .case-click-zone ведёт на страницу активного кейса.
  */
 
@@ -180,25 +181,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- Drag на всём треке ----
-  // Один Observer на .cases_slider-track ловит drag/свайп в любом месте
-  // (включая зазоры между карточками). Чистый клик (без движения дальше
-  // DRAG_MIN) идёт в onClick — находим карточку через event.target и
-  // активируем её.
-  track.style.cursor = 'grab';
+  // ---- Drag на .case-drag-zone ----
+  // Observer висит на отдельной зоне (overlay поверх трека). Drag/свайп
+  // ловится в любой её точке. Чистый клик → ищем карточку под курсором
+  // через elementFromPoint (zone её перекрывает, обычный target.closest
+  // вернул бы саму zone). Если .case-drag-zone в DOM нет — fallback на трек.
+  const dragZone = document.querySelector('.case-drag-zone') || track;
+  dragZone.style.cursor = 'grab';
 
   Observer.create({
-    target: track,
+    target: dragZone,
     type: "touch,pointer",
     dragMinimum: DRAG_MIN,
     tolerance: DRAG_TOLERANCE,
-    onPress: () => { track.style.cursor = 'grabbing'; },
-    onRelease: () => { track.style.cursor = 'grab'; },
+    onPress: () => { dragZone.style.cursor = 'grabbing'; },
+    onRelease: () => { dragZone.style.cursor = 'grab'; },
     onLeft: () => nextSlide(),
     onRight: () => prevSlide(),
     onClick: (self) => {
-      const card = self.event?.target?.closest?.('.case_card');
+      const ev = self.event;
+      const x = ev?.clientX;
+      const y = ev?.clientY;
+
+      let card = null;
+      if (x != null && y != null) {
+        // Прячем zone от hit-test, чтобы достать карточку под ней
+        const prevPE = dragZone.style.pointerEvents;
+        dragZone.style.pointerEvents = 'none';
+        const under = document.elementFromPoint(x, y);
+        dragZone.style.pointerEvents = prevPE;
+        card = under?.closest?.('.case_card');
+      }
+      if (!card) card = ev?.target?.closest?.('.case_card');
       if (!card) return;
+
       const i = slidesArr.indexOf(card);
       if (i >= 0 && i !== activeIndex) {
         activeIndex = i;
