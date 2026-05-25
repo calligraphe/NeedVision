@@ -13,13 +13,10 @@
  */
 
 (() => {
-  // lerp: коэффициент доводки (Lenis на каждом кадре сдвигает текущую
-  // позицию на lerp% к таргету). Меньше = плавнее и «ленивее».
-  // 0.07 = заметно премиальный feel, 0.1 = почти нативный, 0.05 = слишком вязко.
-  const LERP = 0.07;
-  const WHEEL_MULTIPLIER = 0.95;   // чуть меньше 1 → шаг скролла мягче
-  const TOUCH_MULTIPLIER = 1.5;
-  const ANCHOR_DURATION = 1.4;     // секунды доводки до якоря
+  // Lenis defaults уже хороши на трекпаде и мыши. Свои lerp/multiplier
+  // не ставим — мелкие отклонения на разных устройствах ощущаются
+  // как «дёрганость» вместо плавности.
+  const ANCHOR_DURATION = 1.2;     // секунды доводки до якоря
 
   function boot() {
     if (typeof Lenis === "undefined") {
@@ -28,11 +25,8 @@
     }
 
     const lenis = new Lenis({
-      lerp: LERP,
       smoothWheel: true,
-      smoothTouch: false,         // touch на мобилке оставляем нативным
-      wheelMultiplier: WHEEL_MULTIPLIER,
-      touchMultiplier: TOUCH_MULTIPLIER
+      smoothTouch: false     // touch на мобилке оставляем нативным
     });
 
     // Sync со ScrollTrigger — без этого scrub-таймлайны (stages,
