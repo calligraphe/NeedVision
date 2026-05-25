@@ -19,10 +19,11 @@ function bootPreloader() {
   const icons = Array.from(preloader.querySelectorAll(".preloader_icon"));
   if (icons.length === 0) return;
 
-  const FRAME_MS       = 200;    // кадр цикла, 0.2с на каждое лого
-  const MIN_DISPLAY_MS = 200 * 9; // минимум — один полный цикл 1→9
-  const FADE_DURATION  = 1.0;    // длительность fade-out
-  const NAV_DELAY_MS   = 320;    // пауза перед location.href
+  const FRAME_MS         = 400;       // 0.4с на каждое лого
+  const MIN_DISPLAY_MS   = 400 * 9;   // минимум — полный цикл 1→9
+  const PAUSE_ON_LAST_MS = 600;       // держим 9-е лого перед fade
+  const FADE_DURATION    = 1.0;       // длительность fade-out
+  const NAV_DELAY_MS     = 320;       // пауза перед location.href
 
   let cycleRunning = false;
   let currentIdx   = 0;
@@ -96,24 +97,29 @@ function bootPreloader() {
 
     setTimeout(() => {
       waitForCycleEnd(() => {
-        const onDone = () => {
-          stopCycle();
-          preloader.style.display = "none";
-          unlockUI();
-        };
+        // Достигли 9-го лого. Стопаем цикл сразу — 9-е лого держится
+        // на экране PAUSE_ON_LAST_MS, потом fade.
+        stopCycle();
 
-        if (typeof gsap !== "undefined") {
-          gsap.to(preloader, {
-            opacity: 0,
-            duration: FADE_DURATION,
-            ease: "expo.out",
-            onComplete: onDone
-          });
-        } else {
-          preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
-          preloader.style.opacity = "0";
-          setTimeout(onDone, FADE_DURATION * 1000);
-        }
+        setTimeout(() => {
+          const onDone = () => {
+            preloader.style.display = "none";
+            unlockUI();
+          };
+
+          if (typeof gsap !== "undefined") {
+            gsap.to(preloader, {
+              opacity: 0,
+              duration: FADE_DURATION,
+              ease: "expo.out",
+              onComplete: onDone
+            });
+          } else {
+            preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
+            preloader.style.opacity = "0";
+            setTimeout(onDone, FADE_DURATION * 1000);
+          }
+        }, PAUSE_ON_LAST_MS);
       });
     }, wait);
   }
