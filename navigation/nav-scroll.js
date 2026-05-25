@@ -88,7 +88,7 @@ function bootNavScroll() {
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
     duration: 0.6,
-    ease: "power2.inOut"
+    ease: "sine.inOut"
   }, TOP_DELAY);
 
   compressTl.to(".menu_profit-badge", {
@@ -110,16 +110,16 @@ function bootNavScroll() {
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
     duration: 0.5,
-    ease: "power2.inOut"
+    ease: "sine.inOut"
   }, TOP_DELAY);
 
   // Иконки/таймер уходят в opacity + height за первые ~100px скролла.
-  // Чуть длиннее — резкого «обрубания» больше нет
+  // sine.inOut — без резкого 'обрубания'
   compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
     opacity: 0,
     height: 0,
     duration: 0.25,
-    ease: "power2.inOut"
+    ease: "sine.inOut"
   }, 0);
 
 
@@ -140,17 +140,18 @@ function bootNavScroll() {
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
-    // Скролл двигает proxy. end растянули с +=800 до +=1600 —
-    // плашка сжимается в 2 раза дольше относительно скролла.
-    // scrub 2.5 даёт длинную inertia-доводку поверх Lenis.
+    // Скролл двигает proxy. end +=1280 (раньше +=1600) — плашка
+    // сжимается на 20% быстрее по скроллу. scrub 1.8 (раньше 2.5) —
+    // inertia-доводка короче, реакция чуть отзывчивее, но плавность
+    // от Lenis сохраняется.
     gsap.to(compressState, {
       progress: 1,
       ease: "none",
       scrollTrigger: {
         trigger: "body",
         start: "top top",
-        end: "+=1600",
-        scrub: 2.5
+        end: "+=1280",
+        scrub: 1.8
       },
       onUpdate: () => {
         if (!menuOpen) {
@@ -161,15 +162,14 @@ function bootNavScroll() {
 
 
     // Инверсия над .stages (бежевая секция).
-    // .to (а не .fromTo) — захватываем текущее состояние, не пробивая
-    // forced from-value поверх compressTl. scrub 2.5 — цвета плавно
-    // «доезжают» вместо мгновенной привязки к scroll-position.
+    // scrub 1.8 — синхронно с compress: цвета плавно доезжают,
+    // но не отстают за плашкой.
     navInvertTl = gsap.timeline({
       scrollTrigger: {
         trigger: ".stages",
         start: "top 90%",
         end: "top 15%",
-        scrub: 2.5
+        scrub: 1.8
       }
     });
 
