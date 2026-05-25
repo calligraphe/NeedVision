@@ -9,17 +9,7 @@
  * На внутренних страницах (например /cases) навигация должна быть сразу
  * в «сжатом» виде без scroll-анимации. Для этого на <body> ставится
  * атрибут data-nav-mode="static" (Webflow → Body → Element Settings →
- * Custom Attributes). Меню по клику работает обычно в обоих режимах.
- *
- * Архитектура:
- *  — DOM-кэш (querySelector в init, дальше прямые ссылки);
- *  — снятие data-w-id со ВСЕХ затронутых элементов (Webflow IX2
- *    параллельно ставит свои transform/opacity → конфликт с GSAP →
- *    «призраки» при reverse через scrub);
- *  — один compressTl (paused, управляется scroll-proxy или click);
- *  — навInvertTl (scrub, инверсия цветов над .stages);
- *  — applyInvertState при открытии меню в зоне инверсии;
- *  — throttled scroll-listener с флагом для force-reset на scroll<50.
+ * Custom Attributes). Меню по клику работает как обычно в обоих режимах.
  */
 
 function bootNavScroll() {
@@ -37,147 +27,120 @@ function bootNavScroll() {
 
   gsap.registerPlugin(ScrollTrigger);
 
-
-  // ---- DOM-кэш ----
-  const $logo         = document.querySelector(".nav-logo_img");
-  const $logoWrap     = document.querySelector(".nav-logo");
-  const $navBtm       = document.querySelector(".nav-btm");
-  const $navBar       = document.querySelector(".nav_bar");
-  const $profitBadge  = document.querySelector(".menu_profit-badge");
-  const $profitItems  = gsap.utils.toArray(".nav-profit-item");
-  const $navIcon      = document.querySelector(".nav-icon");
-  const $controlBar   = document.querySelector(".menu_control-bar");
-  const $controlBarChildren = gsap.utils.toArray(".menu_control-bar *");
-  const $sideIcons    = gsap.utils.toArray(".nav_left-icon, .nav_right-icon, .nav-timer");
-  const $navBtmAll    = gsap.utils.toArray(".nav-btm, .nav-btm *");
-  const $menuPanel    = document.querySelector(".menu_dropdown-list");
-  const $menuBackdrop = document.querySelector(".menu_backdrop");
-  const $menuBtn      = document.querySelector(".nav-menu");
-  const $menuTxt      = document.querySelector(".nav-menu__txt");
-  const $menuIcon     = document.querySelector(".menu-icon");
-
-
-  // ---- Снять Webflow IX2 со ВСЕХ nav-элементов ----
-  // IX2 параллельно с GSAP ставит свои transform/opacity → при reverse
-  // через scrub браузер рендерит ДВА состояния одновременно (тот что от
-  // IX2 + тот что от GSAP), отсюда «призрак логотипа».
-  const ix2Targets = [
-    overlay, $logo, $logoWrap, $navBtm, $navBar, $profitBadge,
-    $navIcon, $controlBar, $menuPanel, $menuBackdrop, $menuBtn,
-    $menuTxt, $menuIcon,
-    ...$profitItems, ...$controlBarChildren, ...$sideIcons, ...$navBtmAll
-  ];
-  ix2Targets.forEach((el) => el?.removeAttribute?.("data-w-id"));
-
-
-  // ---- GPU-слой для лого ----
-  // НЕ ставим transform inline — GSAP сам через force3D:true делает
-  // translateZ(0) в каждом tween. Если ставить руками — GSAP читает
-  // matrix3d с translateZ и пытается интерполировать → конфликт.
-  if ($logo) {
-    $logo.style.willChange = "transform";
-    $logo.style.backfaceVisibility = "hidden";
-    $logo.style.transformOrigin = "left center";
-  }
-
-
   // ---- Стартовое состояние ----
-  gsap.set($profitBadge, {
+
+  // Profit-счётчик скрыт по умолчанию — раскроется на скролле/открытии меню
+  gsap.set(".menu_profit-badge", {
     opacity: 0,
     width: 0,
     overflow: "hidden",
     whiteSpace: "nowrap"
   });
-  gsap.set($profitItems, { opacity: 0, y: 20 });
-  gsap.set($menuPanel, { height: 0, opacity: 0 });
-  gsap.set($menuBackdrop, { opacity: 0, pointerEvents: "none" });
+
+  gsap.set(".nav-profit-item", { opacity: 0, y: 20 });
+
+  // Дропдаун схлопнут, backdrop невидим
+  gsap.set(".menu_dropdown-list", { height: 0, opacity: 0 });
+  gsap.set(".menu_backdrop", { opacity: 0, pointerEvents: "none" });
+
   // У overlay в Webflow нет explicit bg — задаём прозрачно-белый,
-  // чтобы tween в #ffffff корректно интерполировал альфу.
-  gsap.set(overlay, { backgroundColor: "rgba(255,255,255,0)" });
+  // чтобы tween в #ffffff корректно интерполировал альфу
+  gsap.set(".menu_overlay-content", {
+    backgroundColor: "rgba(255,255,255,0)"
+  });
 
 
   // ---- Compress timeline (paused, управляется снаружи) ----
   // Один таймлайн обслуживает scroll и клик меню:
-  //   — скролл двигает progress через proxy + scrub;
-  //   — клик меню форсит progress = 1.
-  // Лого стартует сразу (pos 0). Плашка, текст, profit, инверсия —
-  // на TOP_DELAY, чтобы лого успело «приземлиться» до перекраски.
+  //   - скролл двигает progress через proxy + scrub
+  //   - клик меню форсит progress = 1
+  //
+  // Лого и nav-btm стартуют сразу (pos 0), всё остальное (плашка, текст,
+  // profit, инверсия) отложено на TOP_DELAY — чтобы лого успело
+  // «приземлиться» до того, как плашка начнёт перекрашиваться.
   const compressTl = gsap.timeline({ paused: true });
-  // TOP_DELAY уменьшен с 0.2 до 0.1 — плашка начинает меняться когда
-  // лого прошёл ~30% пути, не ждёт 60%. Gap между фазами стал слитный.
-  const TOP_DELAY = 0.1;
+  const TOP_DELAY = 0.2;
 
-  // scale вместо width: width = layout reflow + img-resize = «призрак»
-  // при scrub-reverse. scale = composite-only, GPU слой, плавный
-  // reverse без артефактов. transformOrigin: left center — сжимается
-  // влево, как и при width:62%.
-  compressTl.to($logo, {
-    scale: 0.62,
+  // top → y (translateY): composite, без layout reflow.
+  // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
+  compressTl.to(".nav-logo_img", {
+    width: "62%",
     y: "4vw",
-    duration: 0.35,
-    ease: "expo.out",
-    force3D: true
-  }, 0);
-
-  compressTl.to($navBtm, {
-    marginTop: "0.55vw",
-    duration: 0.45,
-    ease: "expo.out"
-  }, 0);
-
-  compressTl.to($sideIcons, {
-    opacity: 0,
-    height: 0,
     duration: 0.25,
-    ease: "sine.inOut"
+    ease: "power2.out"
   }, 0);
 
-  compressTl.to(overlay, {
+  compressTl.to(".nav-btm", {
+    marginTop: "0.55vw",
+    duration: 0.35,
+    ease: "power2.out"
+  }, 0);
+
+  compressTl.to(".menu_overlay-content", {
     width: "29vw",
     backgroundColor: "#ffffff",
-    duration: 0.65,
-    ease: "expo.out"
+    duration: 0.5,
+    ease: "power2.out"
   }, TOP_DELAY);
 
-  compressTl.to($controlBarChildren, {
+  compressTl.to(".menu_control-bar *", {
     color: "#000000",
-    duration: 0.6,
-    ease: "sine.inOut"
+    duration: 0.5,
+    ease: "power2.out"
   }, TOP_DELAY);
 
-  compressTl.to($profitBadge, {
+  compressTl.to(".menu_profit-badge", {
     width: "auto",
     opacity: 1,
     margin: "0 0.5vw",
-    duration: 0.65,
-    ease: "expo.out"
+    duration: 0.5,
+    ease: "power2.out"
   }, TOP_DELAY);
 
-  compressTl.to($profitItems, {
+  compressTl.to(".nav-profit-item", {
     opacity: 1,
     y: 0,
-    duration: 0.9,
+    duration: 0.8,
     stagger: 0.1,
-    ease: "expo.out"
+    ease: "power2.out"
   }, TOP_DELAY);
 
-  compressTl.to($navIcon, {
+  compressTl.to(".nav-icon", {
     filter: "invert(1)",
-    duration: 0.5,
-    ease: "sine.inOut"
+    duration: 0.4,
+    ease: "power2.out"
   }, TOP_DELAY);
+
+  // Иконки/таймер уходят в opacity + height одновременно за первые
+  // ~100px скролла. Высота тоже схлопывается, чтобы .nav_bar не
+  // оставлял пустой отступ
+  compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
+    opacity: 0,
+    height: 0,
+    duration: 0.15,
+    ease: "power2.out"
+  }, 0);
 
 
   // ---- Режим: scroll-driven или static ----
+  // body[data-nav-mode="static"] → плашка сразу в финальном виде,
+  // без ScrollTrigger и без navInvertTl. Меню по клику работает обычно.
   const isStaticNav = document.body?.dataset?.navMode === "static";
+
+  // compressState.progress хранит «куда вернуть плашку при закрытии меню».
+  // В scroll-режиме обновляется ScrollTrigger'ом, в static — фиксирован на 1.
   const compressState = { progress: isStaticNav ? 1 : 0 };
   let menuOpen = false;
+
+  // Объявлен снаружи — openMenu/closeMenu проверяют через него,
+  // находимся ли мы сейчас в зоне инверсии над .stages.
   let navInvertTl = null;
 
   if (isStaticNav) {
     compressTl.progress(1);
   } else {
-    // Scroll-driven compress. Оригинальные тайминги: end +=800, scrub 1.
+    // Скролл двигает proxy через scrub:1 → плавно. Когда меню открыто,
+    // игнорируем апдейты, чтобы не перебивать клик-анимацию.
     gsap.to(compressState, {
       progress: 1,
       ease: "none",
@@ -188,102 +151,82 @@ function bootNavScroll() {
         scrub: 1
       },
       onUpdate: () => {
-        if (!menuOpen) compressTl.progress(compressState.progress);
+        if (!menuOpen) {
+          compressTl.progress(compressState.progress);
+        }
       }
     });
 
-    // Инверсия над .stages. Оригинальная зона top 85% → top 25%, scrub 1.
+
+    // Инверсия над .stages (бежевая секция).
+    // .to (а не .fromTo) — захватываем текущее состояние, не пробивая
+    // forced from-value поверх compressTl
     navInvertTl = gsap.timeline({
       scrollTrigger: {
         trigger: ".stages",
         start: "top 85%",
         end: "top 25%",
-        scrub: 1
+        scrub: true
       }
     });
 
-    navInvertTl.to(overlay,
+    navInvertTl.to(".menu_overlay-content",
       { backgroundColor: "#040101", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to($controlBarChildren,
+    navInvertTl.to(".menu_control-bar *",
       { color: "#ffffff", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to($navBtmAll,
+    navInvertTl.to(".nav-btm, .nav-btm *",
       { color: "#000000", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to($logo,
+    navInvertTl.to(".nav-logo_img",
       { filter: "invert(1)", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to($navIcon,
+    navInvertTl.to(".nav-icon",
       { filter: "invert(0)", duration: 1, immediateRender: false }, 0);
-
-
-    // ---- Throttled force-reset при jump в top ----
-    // Кнопка «вверх» / lenis.scrollTo(0) прыгает в начало быстро,
-    // но scrub:1.8 догоняет ещё ~2с — плашка зависает в полу-state.
-    // Throttle через rAF + флаг → gsap.to() стрельбает ровно один
-    // раз при пересечении границы scrollY=50.
-    let scrollTickScheduled = false;
-    let forcedReset = false;
-
-    function onScrollCheck() {
-      if (window.scrollY < 50) {
-        if (forcedReset) return;
-        forcedReset = true;
-
-        if (compressTl.progress() > 0.05) {
-          compressTl.progress(0);
-          compressState.progress = 0;
-        }
-        if (navInvertTl?.scrollTrigger?.progress > 0.05) {
-          gsap.to(overlay,             { backgroundColor: "#ffffff", duration: 0.4, overwrite: "auto" });
-          gsap.to($controlBarChildren, { color: "#000000",            duration: 0.4, overwrite: "auto" });
-          gsap.to($logo,               { filter: "invert(0)",         duration: 0.4, overwrite: "auto" });
-          gsap.to($navIcon,            { filter: "invert(1)",         duration: 0.4, overwrite: "auto" });
-        }
-      } else {
-        forcedReset = false;
-      }
-    }
-
-    window.addEventListener("scroll", () => {
-      if (scrollTickScheduled) return;
-      scrollTickScheduled = true;
-      requestAnimationFrame(() => {
-        scrollTickScheduled = false;
-        onScrollCheck();
-      });
-    }, { passive: true });
   }
 
 
   // ---- Override инверсии при открытом меню ----
-  // Над .stages плашка чёрная с белым текстом. При открытии меню в
-  // этой зоне возвращаем светлый вид; при закрытии — обратно в dark.
+  // Над .stages плашка чёрная с белым текстом (navInvertTl). Когда юзер
+  // открывает меню в этой зоне — плашка должна вернуться к обычному
+  // сжатому виду (белая, чёрный текст). При закрытии — обратно к dark
+  // если всё ещё в зоне инверсии.
   const INVERT_DARK  = { bg: "#040101", color: "#ffffff", logo: "invert(1)", icon: "invert(0)" };
   const INVERT_LIGHT = { bg: "#ffffff", color: "#000000", logo: "invert(0)", icon: "invert(1)" };
   const INVERT_OVERRIDE_DURATION = 0.5;
 
   function applyInvertState(state) {
-    const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "expo.out", overwrite: "auto" };
-    gsap.to(overlay,              { ...opts, backgroundColor: state.bg });
-    gsap.to($controlBarChildren,  { ...opts, color: state.color });
-    gsap.to($logo,                { ...opts, filter: state.logo });
-    gsap.to($navIcon,             { ...opts, filter: state.icon });
+    const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "power2.out", overwrite: "auto" };
+    gsap.to(".menu_overlay-content", { ...opts, backgroundColor: state.bg });
+    gsap.to(".menu_control-bar *",   { ...opts, color: state.color });
+    gsap.to(".nav-logo_img",         { ...opts, filter: state.logo });
+    gsap.to(".nav-icon",             { ...opts, filter: state.icon });
   }
 
   function isInInvertZone() {
     return !!navInvertTl?.scrollTrigger && navInvertTl.scrollTrigger.progress > 0.5;
   }
 
-
   // ---- Меню (открытие/закрытие) ----
-  if ($menuBtn && $menuPanel) {
+  const menuBtn = document.querySelector(".nav-menu");
+  const menuPanel = document.querySelector(".menu_dropdown-list");
+  const menuTxt = document.querySelector(".nav-menu__txt");
+  const menuIcon = document.querySelector(".menu-icon");
+  const menuBackdrop = document.querySelector(".menu_backdrop");
+
+  if (menuBtn && menuPanel) {
+    // Один timeline на оба сценария. Каждый новый клик kill()'ит
+    // предыдущий — нет наложений и рваных переходов.
     let menuTl = null;
 
     function openMenu() {
       menuOpen = true;
       if (menuTl) menuTl.kill();
 
+      // Если меню открывают над .stages — перебиваем navInvertTl на light
       if (isInInvertZone()) applyInvertState(INVERT_LIGHT);
 
+      // Если плашка ещё не сжата — сначала визуально сжимаем,
+      // только потом раскрываем дропдаун. Иначе сразу к дропдауну.
       const needsCompress = compressTl.progress() < 0.99;
+
       menuTl = gsap.timeline();
 
       if (needsCompress) {
@@ -296,18 +239,18 @@ function bootNavScroll() {
       }
 
       // -0.2 перекрытие: последняя четверть сжатия и первая четверть
-      // раскрытия одновременно — переход цельный.
+      // раскрытия идут одновременно — переход цельный, без зазора
       const dropdownPos = needsCompress ? "-=0.2" : 0;
 
-      menuTl.to($menuPanel, {
+      menuTl.to(menuPanel, {
         height: "auto",
         opacity: 1,
         duration: 1.1,
         ease: "power2.out"
       }, dropdownPos);
 
-      if ($menuBackdrop) {
-        menuTl.to($menuBackdrop, {
+      if (menuBackdrop) {
+        menuTl.to(menuBackdrop, {
           opacity: 1,
           pointerEvents: "auto",
           duration: 0.9,
@@ -315,20 +258,20 @@ function bootNavScroll() {
         }, "<");
       }
 
-      if ($menuIcon) {
-        $menuIcon.classList.add("is-open");
-        $menuIcon.setAttribute("aria-expanded", "true");
+      if (menuIcon) {
+        menuIcon.classList.add("is-open");
+        menuIcon.setAttribute("aria-expanded", "true");
       }
 
-      if ($menuTxt) {
-        gsap.to($menuTxt, {
+      if (menuTxt) {
+        gsap.to(menuTxt, {
           opacity: 0,
           duration: 0.2,
           ease: "power2.in",
           overwrite: "auto",
           onComplete: () => {
-            $menuTxt.textContent = "CLOSE";
-            gsap.to($menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
+            menuTxt.textContent = "CLOSE";
+            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
           }
         });
       }
@@ -336,23 +279,26 @@ function bootNavScroll() {
 
     function closeMenu() {
       // menuOpen=false сразу, не в onComplete: иначе при быстрых кликах
-      // флаг застревает в true → меню «зависает в режиме закрытия».
+      // menuOpen остаётся true пока идёт close → следующий click опять
+      // попадает в closeMenu → kill → новый close → цикл. Меню «зависает»
+      // в режиме «всегда закрываюсь».
       menuOpen = false;
       if (menuTl) menuTl.kill();
 
+      // Если всё ещё в зоне инверсии — вернуть плашку в dark
       if (isInInvertZone()) applyInvertState(INVERT_DARK);
 
       menuTl = gsap.timeline();
 
-      menuTl.to($menuPanel, {
+      menuTl.to(menuPanel, {
         height: 0,
         opacity: 0,
         duration: 0.75,
         ease: "power2.in"
       }, 0);
 
-      if ($menuBackdrop) {
-        menuTl.to($menuBackdrop, {
+      if (menuBackdrop) {
+        menuTl.to(menuBackdrop, {
           opacity: 0,
           pointerEvents: "none",
           duration: 0.7,
@@ -360,8 +306,9 @@ function bootNavScroll() {
         }, 0);
       }
 
-      // -0.3 перекрытие: декомпрессия стартует пока дропдаун
-      // ещё схлопывается.
+      // Возврат к scroll-state. У верха страницы — плавно раскрываемся
+      // обратно. У низа или в static-режиме — no-op (progress уже 1).
+      // -0.3 перекрытие: декомпрессия стартует пока дропдаун ещё схлопывается
       menuTl.to(compressTl, {
         progress: compressState.progress,
         duration: 0.95,
@@ -369,34 +316,35 @@ function bootNavScroll() {
         overwrite: true
       }, "-=0.3");
 
-      if ($menuIcon) {
-        $menuIcon.classList.remove("is-open");
-        $menuIcon.setAttribute("aria-expanded", "false");
+      if (menuIcon) {
+        menuIcon.classList.remove("is-open");
+        menuIcon.setAttribute("aria-expanded", "false");
       }
 
-      if ($menuTxt) {
-        gsap.to($menuTxt, {
+      if (menuTxt) {
+        gsap.to(menuTxt, {
           opacity: 0,
           duration: 0.2,
           ease: "power2.in",
           overwrite: "auto",
           onComplete: () => {
-            $menuTxt.textContent = "Menu";
-            gsap.to($menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
+            menuTxt.textContent = "Menu";
+            gsap.to(menuTxt, { opacity: 1, duration: 0.25, ease: "power2.out" });
           }
         });
       }
     }
 
-    // stopImmediatePropagation — IX2 (если осталось где-то) не дёргает.
-    $menuBtn.addEventListener("click", (e) => {
+    // stopImmediatePropagation — Webflow IX2 может висеть на той же
+    // кнопке и перебивать наш toggle.
+    menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopImmediatePropagation();
       menuOpen ? closeMenu() : openMenu();
     });
 
-    if ($menuBackdrop) {
-      $menuBackdrop.addEventListener("click", () => {
+    if (menuBackdrop) {
+      menuBackdrop.addEventListener("click", () => {
         if (menuOpen) closeMenu();
       });
     }
@@ -405,15 +353,16 @@ function bootNavScroll() {
       if (e.key === "Escape" && menuOpen) closeMenu();
     });
 
-    // Клик по любой ссылке внутри меню — закрыть (event delegation).
-    $menuPanel.addEventListener("click", (e) => {
+    // Клик по любой ссылке внутри меню — закрыть.
+    // Event delegation: один listener вместо forEach.
+    menuPanel.addEventListener("click", (e) => {
       if (e.target.closest(".nav_menu-link")) closeMenu();
     });
   }
 }
 
-// Если DOM ещё парсится — ждём, иначе сразу. Покрывает CDN отдачу
-// скрипта после DOMContentLoaded.
+// Если DOM ещё парсится — ждём, иначе сразу. Покрывает случай когда
+// CDN отдаёт скрипт после DOMContentLoaded.
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", bootNavScroll);
 } else {
