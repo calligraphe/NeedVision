@@ -1,10 +1,14 @@
 /**
- * Секция «Этапы»: три скролл-анимации.
+ * Секция «Этапы». Три скролл-анимации:
  *  — на входе гаснет фонарик, фон about меняется на кремовый;
- *  — каждый .stages_img выезжает снизу с расфокусом (blur 12 → 0);
- *  — барабанная смена текстов через «белое свечение» (text-shadow,
- *    а не blur — на ретине blur даёт квадрат вокруг текста).
- * Параллельно тикают точки .stages_dot-full/empty и лейбл «ЭТАП N».
+ *  — каждый .stages_img выезжает снизу с расфокусом + лёгкий settle scale;
+ *  — смена текстов через mask reveal: текущий yPercent: 0 → -100 (уезжает
+ *    вверх в маску .stages_title-mask / .stages_subtitle-mask /
+ *    .stages_p-mask), новый 100 → 0 (приезжает снизу). Маски уже стоят
+ *    в Webflow с overflow:hidden — анимация работает «из коробки».
+ * Параллельно тикают точки .stages_dot-full/empty (с лёгким pop-scale
+ * на активной) и лейбл «ЭТАП N» (тоже mask reveal — .stages_meta-row
+ * имеет overflow:hidden).
  */
 
 function bootStagesAnimation() {
@@ -43,7 +47,7 @@ function bootStagesAnimation() {
   }, 0.3);
 
 
-  // .stages_img — выезжают снизу с расфокусом
+  // .stages_img — выезжают снизу с расфокусом и settle scale
   const stageImages = gsap.utils.toArray(".stages_img");
 
   stageImages.forEach((img) => {
@@ -53,14 +57,16 @@ function bootStagesAnimation() {
     gsap.set(img, {
       y: 100,
       opacity: 0,
-      filter: "blur(12px)"
+      scale: 1.06,
+      filter: "blur(10px)"
     });
 
     gsap.to(img, {
       y: 0,
       opacity: 1,
+      scale: 1,
       filter: "blur(0px)",
-      ease: "power2.out",
+      ease: "power3.out",
       scrollTrigger: {
         trigger: img,
         start: "top 90%",
@@ -71,163 +77,161 @@ function bootStagesAnimation() {
   });
 
 
-  // Барабанная смена текстов. Свечение через text-shadow вместо blur —
-  // на ретине blur даёт «квадрат» вокруг текста, shadow чистый.
+  // Mask reveal текстов. .stages_title-mask, .stages_subtitle-mask,
+  // .stages_p-mask — все overflow:hidden. Двигаем внутренние элементы
+  // через yPercent (относительно собственной высоты) — текст ровно
+  // прячется за маской.
   const wrappers = gsap.utils.toArray(".stages_text-wrapper");
   const dotsFull = gsap.utils.toArray(".stages_dot-full");
   const dotsEmpty = gsap.utils.toArray(".stages_dot-empty");
   const stepLabel = document.querySelector(".stages_step-label");
+  const stagesPagination = document.querySelector(".stages_pagination");
 
-  // Состояния «тумана» — белое свечение через text-shadow.
-  // Несколько слоёв создают мягкое рассеянное свечение.
-  const GLOW = "0 0 12px rgba(255,251,242,1), 0 0 24px rgba(255,251,242,0.9), 0 0 40px rgba(255,251,242,0.7)";
-  const GLOW_SMALL = "0 0 6px rgba(255,251,242,1), 0 0 12px rgba(255,251,242,0.8)";
-  const NO_GLOW = "0 0 0px rgba(255,251,242,0)";
+  if (wrappers.length === 0) return;
 
-  if (wrappers.length > 0) {
-    wrappers.forEach((wrap) => {
-      const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
-      innerTexts.forEach(el => {
-        el.style.willChange = "text-shadow, transform, opacity";
-        el.style.backfaceVisibility = "hidden";
-      });
+  // Webflow IX2 (data-w-id) сам управляет opacity на точках и pagination —
+  // снимаем атрибут, иначе IX2 сбрасывает наш opacity после gsap.set.
+  const pagDots = [...dotsFull, ...dotsEmpty];
+  if (stagesPagination) pagDots.push(stagesPagination);
+  pagDots.forEach(el => el.removeAttribute("data-w-id"));
+
+  if (stagesPagination) gsap.set(stagesPagination, { opacity: 1 });
+
+  // will-change на текстах. Без backface-visibility получаются artifacts
+  // на ретине при transform.
+  wrappers.forEach((wrap) => {
+    const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+    innerTexts.forEach(el => {
+      el.style.willChange = "transform";
+      el.style.backfaceVisibility = "hidden";
     });
+  });
 
-    if (stepLabel) {
-      stepLabel.style.willChange = "text-shadow, transform, opacity";
-      stepLabel.style.backfaceVisibility = "hidden";
-    }
-
-    wrappers.forEach((wrap, index) => {
-      const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
-
-      if (index !== 0) {
-        gsap.set(innerTexts, {
-          y: 40,
-          opacity: 0,
-          textShadow: GLOW              // белое свечение в скрытом состоянии
-        });
-        gsap.set(wrap, { autoAlpha: 0 });
-      } else {
-        gsap.set(innerTexts, {
-          y: 0,
-          opacity: 1,
-          textShadow: NO_GLOW
-        });
-        gsap.set(wrap, { autoAlpha: 1 });
-      }
-    });
-
-    const stagesPagination = document.querySelector(".stages_pagination");
-
-    // На точках висит Webflow IX2 (On-Page-Load), который сбрасывает
-    // opacity после нашего gsap.set. Снимаем data-w-id — IX2 их больше
-    // не видит, opacity полностью наш.
-    const pagDots = [...dotsFull, ...dotsEmpty];
-    if (stagesPagination) pagDots.push(stagesPagination);
-    pagDots.forEach(el => el.removeAttribute("data-w-id"));
-
-    if (stagesPagination) {
-      gsap.set(stagesPagination, { opacity: 1 });
-    }
-    // Активная (0): full=1, empty=0. Остальные наоборот.
-    if (dotsFull[0]) gsap.set(dotsFull[0], { opacity: 1 });
-    if (dotsFull.length > 1) gsap.set(dotsFull.slice(1), { opacity: 0 });
-    if (dotsEmpty[0]) gsap.set(dotsEmpty[0], { opacity: 0 });
-    if (dotsEmpty.length > 1) gsap.set(dotsEmpty.slice(1), { opacity: 1 });
-
-    const tlStages = gsap.timeline({
-      scrollTrigger: {
-        trigger: ".stages",
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 1.5
-      }
-    });
-
-    // Дублируем стартовое внутри таймлайна — иначе scrub-рефреш
-    // ре-инициализирует tween'ы и сбивает inline opacity.
-    if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1 }, 0);
-    if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0 }, 0);
-    if (dotsEmpty[0]) tlStages.set(dotsEmpty[0], { opacity: 0 }, 0);
-    if (dotsEmpty.length > 1) tlStages.set(dotsEmpty.slice(1), { opacity: 1 }, 0);
-
-    wrappers.forEach((wrap, i) => {
-      if (i < wrappers.length - 1) {
-        const nextWrap = wrappers[i + 1];
-
-        const currentTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
-        const nextTexts = nextWrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
-
-        const stepLabelName = `step_${i}`;
-
-        tlStages.set(nextWrap, { autoAlpha: 1 }, stepLabelName);
-
-        // УХОД ТЕКУЩИХ: растворяются в белом свечении
-        tlStages.to(currentTexts, {
-          y: -40,
-          opacity: 0,
-          textShadow: GLOW,
-          duration: 1.2,
-          stagger: 0.06,
-          ease: "power2.inOut"
-        }, stepLabelName);
-
-        // ПОЯВЛЕНИЕ НОВЫХ: из белого свечения в фокус
-        tlStages.fromTo(nextTexts,
-          {
-            y: 40,
-            opacity: 0,
-            textShadow: GLOW
-          },
-          {
-            y: 0,
-            opacity: 1,
-            textShadow: NO_GLOW,
-            duration: 1.2,
-            stagger: 0.06,
-            ease: "power2.inOut"
-          }, stepLabelName);
-
-        // Прошлая точка: full гаснет, empty проявляется.
-        tlStages.to(dotsFull[i], { opacity: 0, duration: 1, ease: "power2.inOut" }, stepLabelName);
-        if (dotsEmpty[i]) {
-          tlStages.to(dotsEmpty[i], { opacity: 1, duration: 1, ease: "power2.inOut" }, stepLabelName);
-        }
-        // Новая точка: full проявляется, empty гаснет.
-        tlStages.to(dotsFull[i + 1], { opacity: 1, duration: 1, ease: "power2.inOut" }, stepLabelName);
-        if (dotsEmpty[i + 1]) {
-          tlStages.to(dotsEmpty[i + 1], { opacity: 0, duration: 1, ease: "power2.inOut" }, stepLabelName);
-        }
-
-        // ЛЕЙБЛ «ЭТАП N» — более лёгкое свечение для мелкого текста
-        tlStages.to(stepLabel, {
-          y: -15,
-          opacity: 0,
-          textShadow: GLOW_SMALL,
-          duration: 0.5,
-          ease: "power2.in"
-        }, stepLabelName);
-
-        tlStages.set(stepLabel, {
-          textContent: `ЭТАП ${i + 2}`,
-          y: 15,
-          textShadow: GLOW_SMALL
-        }, `${stepLabelName}+=0.5`);
-
-        tlStages.to(stepLabel, {
-          y: 0,
-          opacity: 1,
-          textShadow: NO_GLOW,
-          duration: 0.5,
-          ease: "power2.out"
-        }, `${stepLabelName}+=0.5`);
-
-        tlStages.set(wrap, { autoAlpha: 0 });
-        tlStages.to({}, { duration: 0.5 });
-      }
-    });
+  if (stepLabel) {
+    stepLabel.style.willChange = "transform";
+    stepLabel.style.backfaceVisibility = "hidden";
   }
+
+  // Стартовое: первый wrapper виден полностью, остальные — за маской снизу
+  wrappers.forEach((wrap, index) => {
+    const innerTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+    if (index === 0) {
+      gsap.set(innerTexts, { yPercent: 0 });
+      gsap.set(wrap, { autoAlpha: 1 });
+    } else {
+      gsap.set(innerTexts, { yPercent: 100 });
+      gsap.set(wrap, { autoAlpha: 0 });
+    }
+  });
+
+  if (stepLabel) gsap.set(stepLabel, { yPercent: 0 });
+
+  // Стартовое для точек: первая активна (full=1, empty=0, scale=1),
+  // остальные — наоборот, scale 0.85 для будущего pop при активации.
+  if (dotsFull[0]) gsap.set(dotsFull[0], { opacity: 1, scale: 1, transformOrigin: "center center" });
+  if (dotsFull.length > 1) gsap.set(dotsFull.slice(1), { opacity: 0, scale: 0.85, transformOrigin: "center center" });
+  if (dotsEmpty[0]) gsap.set(dotsEmpty[0], { opacity: 0 });
+  if (dotsEmpty.length > 1) gsap.set(dotsEmpty.slice(1), { opacity: 1 });
+
+  const tlStages = gsap.timeline({
+    scrollTrigger: {
+      trigger: ".stages",
+      start: "top top",
+      end: "bottom bottom",
+      scrub: 1.5
+    }
+  });
+
+  // Дублируем стартовое внутри таймлайна — иначе scrub-рефреш
+  // ре-инициализирует tween'ы и сбивает inline opacity/scale.
+  if (dotsFull[0]) tlStages.set(dotsFull[0], { opacity: 1, scale: 1 }, 0);
+  if (dotsFull.length > 1) tlStages.set(dotsFull.slice(1), { opacity: 0, scale: 0.85 }, 0);
+  if (dotsEmpty[0]) tlStages.set(dotsEmpty[0], { opacity: 0 }, 0);
+  if (dotsEmpty.length > 1) tlStages.set(dotsEmpty.slice(1), { opacity: 1 }, 0);
+
+  wrappers.forEach((wrap, i) => {
+    if (i >= wrappers.length - 1) return;
+
+    const nextWrap = wrappers[i + 1];
+    const currentTexts = wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+    const nextTexts = nextWrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text");
+
+    const stepName = `step_${i}`;
+
+    tlStages.set(nextWrap, { autoAlpha: 1 }, stepName);
+
+    // УХОД: текущий текст уезжает вверх внутри маски (yPercent:-100)
+    // staggered — заголовок первым, текст по строкам следом
+    tlStages.to(currentTexts, {
+      yPercent: -100,
+      duration: 1.0,
+      stagger: 0.045,
+      ease: "power3.inOut"
+    }, stepName);
+
+    // ПОЯВЛЕНИЕ: новый текст приезжает снизу. +=0.25 — лёгкое опережение
+    // (новый стартует пока старый ещё не до конца уехал → переход плавный)
+    tlStages.fromTo(nextTexts,
+      { yPercent: 100 },
+      {
+        yPercent: 0,
+        duration: 1.15,
+        stagger: 0.055,
+        ease: "power3.out"
+      },
+      `${stepName}+=0.25`);
+
+    // Точки: текущая гаснет и shrink, следующая загорается и pop через back-ease
+    tlStages.to(dotsFull[i], {
+      opacity: 0,
+      scale: 0.85,
+      duration: 0.55,
+      ease: "power2.inOut"
+    }, stepName);
+    if (dotsEmpty[i]) {
+      tlStages.to(dotsEmpty[i], {
+        opacity: 1,
+        duration: 0.55,
+        ease: "power2.inOut"
+      }, stepName);
+    }
+    tlStages.to(dotsFull[i + 1], {
+      opacity: 1,
+      scale: 1,
+      duration: 0.65,
+      ease: "back.out(2)"
+    }, stepName);
+    if (dotsEmpty[i + 1]) {
+      tlStages.to(dotsEmpty[i + 1], {
+        opacity: 0,
+        duration: 0.55,
+        ease: "power2.inOut"
+      }, stepName);
+    }
+
+    // Лейбл «ЭТАП N» — mask reveal через overflow:hidden на .stages_meta-row
+    if (stepLabel) {
+      tlStages.to(stepLabel, {
+        yPercent: -100,
+        duration: 0.4,
+        ease: "power3.in"
+      }, stepName);
+
+      tlStages.set(stepLabel, {
+        textContent: `ЭТАП ${i + 2}`,
+        yPercent: 100
+      }, `${stepName}+=0.4`);
+
+      tlStages.to(stepLabel, {
+        yPercent: 0,
+        duration: 0.5,
+        ease: "power3.out"
+      }, `${stepName}+=0.4`);
+    }
+
+    tlStages.set(wrap, { autoAlpha: 0 });
+    tlStages.to({}, { duration: 0.5 });
+  });
 }
 
 if (document.readyState === "loading") {
