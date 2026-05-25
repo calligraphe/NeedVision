@@ -51,7 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let activeIndex = 0;
   const totalSlides = slides.length;
-  let isAnimating = false;
 
   gsap.set(bgImages, { opacity: 0 });
 
@@ -95,15 +94,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateSlider(index) {
-    if (isAnimating) return;
-    isAnimating = true;
-
-    // 1. Сдвигаем трек
+    // Без isAnimating lock: каждый новый свайп должен мгновенно прерывать
+    // текущую анимацию (overwrite:auto на треке). Иначе lock застревает
+    // и слайдер «иногда перестаёт реагировать» после серии быстрых свайпов.
     gsap.to(track, {
       x: `-${index * SLIDE_STEP_VW}vw`,
       duration: TRACK_DURATION,
       ease: "power2.inOut",
-      onComplete: () => { isAnimating = false; }
+      overwrite: "auto"
     });
 
     // 2. Фракция
@@ -182,16 +180,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ---- Drag-зона ----
-  // Если zone лежит ВНУТРИ трека — она едет вместе с translateX и
-  // правый край уезжает за вьюпорт после первого же swipe → драгать
-  // справа становится нечем. Поэтому если найденный .case-drag-zone
-  // — потомок трека, поднимаемся к статичному предку (parentElement
-  // трека = wrapper слайдера, который не двигается).
+  // .case-drag-zone — родитель трека (track двигается внутри неё).
+  // Если zone случайно положили ВНУТРЬ трека — она ездила бы вместе
+  // с translateX, fallback на parentElement трека.
   let dragZone = document.querySelector('.case-drag-zone');
   if (!dragZone || track.contains(dragZone)) {
     dragZone = track.parentElement || track;
   }
   dragZone.style.cursor = 'grab';
+
+  // Без этого браузер при drag выделяет текст внутри карточек — бесит
+  // и сбивает курсор на text-select.
+  dragZone.style.userSelect = 'none';
+  dragZone.style.webkitUserSelect = 'none';
 
   Observer.create({
     target: dragZone,
