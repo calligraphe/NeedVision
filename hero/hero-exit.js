@@ -64,17 +64,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Scrub-таймлайн: scroll 100→120px (всего 20px), stagger 0.05 для
-  // эффекта 'барабан'. Уход yPercent:-110 — с запасом на padding.
+  // Scrub-таймлайн: scroll 100→400px (300px range), stagger 0.12 —
+  // плавный барабан. Уход yPercent:-110 (запас на padding).
   gsap.to(inners, {
     yPercent: -110,
     opacity: 0,
     ease: "power2.in",
-    stagger: 0.05,
+    stagger: 0.12,
     scrollTrigger: {
       trigger: "body",
       start: "top top-=100",
-      end: "top top-=120",
+      end: "top top-=400",
       scrub: true
     }
   });
