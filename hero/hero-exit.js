@@ -1,11 +1,14 @@
 /**
- * Hero exit: при скролле >100px hero-контент 'барабанит' вверх и
- * исчезает за ~20px прокрутки. Эффект как в stages: каждый hero-блок
- * имеет overflow:hidden (поставлен в Webflow), а ВНУТРИ него двигается
- * контент (yPercent:-100) — текст/картинка уезжают за маску.
+ * Hero exit: при скролле 100→120px hero-контент 'барабанит' вверх
+ * и исчезает за маски (overflow:hidden на каждом hero-элементе).
  *
- * Если внутри блока нет дочерних HTML-элементов (текст лежит прямым
- * text-node), оборачиваем в <span> чтобы было что анимировать.
+ * Каждый hero-элемент — это маска. Внутри неё текст-ноды + пустые
+ * div'ы (Webflow CMS). Чтобы корректно анимировать содержимое маски,
+ * оборачиваем ВЕСЬ innerHTML каждого элемента в один <span style="
+ * display:block"> и анимируем span: yPercent:-100 + opacity:0.
+ *
+ * Исключение: <img> (.hero_planet-img) — leaf-элемент, текста нет,
+ * оборачивать нечего. Анимируем img напрямую.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -26,40 +29,45 @@ document.addEventListener("DOMContentLoaded", () => {
     ".hero_subtitle"
   ];
 
-  // Для каждого target'а собираем animateable inner-элементы.
-  // Маска (родитель) уже имеет overflow:hidden от юзера.
   const inners = [];
 
   targets.forEach((sel) => {
     const el = document.querySelector(sel);
     if (!el) return;
 
-    // Если внутри уже есть HTML-дети — анимируем их.
-    // Если только text-node — оборачиваем в span.
-    if (el.children.length > 0) {
-      Array.from(el.children).forEach(child => {
-        child.style.willChange = "transform, opacity";
-        inners.push(child);
-      });
-    } else if (el.textContent.trim()) {
-      const wrap = document.createElement("span");
-      wrap.style.cssText = "display:inline-block;will-change:transform,opacity";
-      wrap.textContent = el.textContent;
-      el.textContent = "";
-      el.appendChild(wrap);
-      inners.push(wrap);
+    if (el.tagName === "IMG") {
+      // Картинка — анимируем сам img
+      el.style.willChange = "transform, opacity";
+      inners.push(el);
+      return;
     }
+
+    // Защита от повторного оборота (если скрипт запустился дважды)
+    if (el.dataset.heroExitWrapped === "1") {
+      inners.push(el.firstElementChild);
+      return;
+    }
+
+    // Оборачиваем весь innerHTML в один inner-span. display:block
+    // чтобы span занимал всю высоту родителя — yPercent:-100 уведёт
+    // его ровно за маску.
+    const wrap = document.createElement("span");
+    wrap.style.cssText = "display:block;will-change:transform,opacity";
+    wrap.innerHTML = el.innerHTML;
+    el.innerHTML = "";
+    el.appendChild(wrap);
+    el.dataset.heroExitWrapped = "1";
+    inners.push(wrap);
   });
 
   if (inners.length === 0) return;
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Scrub-таймлайн на 20px скролла: 100→120px от верха.
-  // yPercent:-100 = уехать на свою высоту вверх → за маску родителя.
-  // stagger 0.05 — барабан, поочерёдно (но всё уложится в 20px scroll).
+  // Scrub-таймлайн: scroll 100→120px (всего 20px), stagger 0.05 для
+  // эффекта 'барабан'. Уход yPercent:-110 — с запасом на padding.
   gsap.to(inners, {
-    yPercent: -110,           // -110 чтобы наверняка скрыться даже при padding
+    yPercent: -110,
     opacity: 0,
     ease: "power2.in",
     stagger: 0.05,
