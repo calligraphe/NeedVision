@@ -57,14 +57,6 @@ html.lenis, html.lenis body {
 }
 
 
-/* 0.3 3D-сцена (Netlify) — опускаем чуть ниже от верха страницы.
-   margin-top на родителе sticky-wrapper'a безопасен: pin сохраняется,
-   просто старт сцены смещается ниже по странице. */
-.canvas-container {
-  margin-top: 8vw;
-}
-
-
 /* 1. Размытая «корочка» под навигацией */
 .nav-blur-bg {
   backdrop-filter: blur(8px);
