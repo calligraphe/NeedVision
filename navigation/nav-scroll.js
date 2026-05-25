@@ -27,27 +27,34 @@ function bootNavScroll() {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // ---- Стартовое состояние ----
+  // ---- DOM-кэш ----
+  // querySelector летает на каждом scroll-tick через scrub-таймлайн →
+  // дорого. Кэшируем один раз.
+  const $logo         = document.querySelector(".nav-logo_img");
+  const $navBtm       = document.querySelector(".nav-btm");
+  const $profitBadge  = document.querySelector(".menu_profit-badge");
+  const $profitItems  = gsap.utils.toArray(".nav-profit-item");
+  const $navIcon      = document.querySelector(".nav-icon");
+  const $controlBarChildren = gsap.utils.toArray(".menu_control-bar *");
+  const $sideIcons    = gsap.utils.toArray(".nav_left-icon, .nav_right-icon, .nav-timer");
+  const $navBtmAll    = gsap.utils.toArray(".nav-btm, .nav-btm *");
 
-  // Profit-счётчик скрыт по умолчанию — раскроется на скролле/открытии меню
-  gsap.set(".menu_profit-badge", {
+  // ---- Стартовое состояние ----
+  gsap.set($profitBadge, {
     opacity: 0,
     width: 0,
     overflow: "hidden",
     whiteSpace: "nowrap"
   });
 
-  gsap.set(".nav-profit-item", { opacity: 0, y: 20 });
+  gsap.set($profitItems, { opacity: 0, y: 20 });
 
-  // Дропдаун схлопнут, backdrop невидим
   gsap.set(".menu_dropdown-list", { height: 0, opacity: 0 });
   gsap.set(".menu_backdrop", { opacity: 0, pointerEvents: "none" });
 
   // У overlay в Webflow нет explicit bg — задаём прозрачно-белый,
   // чтобы tween в #ffffff корректно интерполировал альфу
-  gsap.set(".menu_overlay-content", {
-    backgroundColor: "rgba(255,255,255,0)"
-  });
+  gsap.set(overlay, { backgroundColor: "rgba(255,255,255,0)" });
 
 
   // ---- Compress timeline (paused, управляется снаружи) ----
@@ -65,33 +72,33 @@ function bootNavScroll() {
   // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw).
   // expo.out — премиальный settle: быстрая фаза старта и долгая мягкая
   // доводка к финалу. На scrub'е это даёт «приземление», а не «удар».
-  compressTl.to(".nav-logo_img", {
+  compressTl.to($logo, {
     width: "62%",
     y: "4vw",
     duration: 0.35,
     ease: "expo.out"
   }, 0);
 
-  compressTl.to(".nav-btm", {
+  compressTl.to($navBtm, {
     marginTop: "0.55vw",
     duration: 0.45,
     ease: "expo.out"
   }, 0);
 
-  compressTl.to(".menu_overlay-content", {
+  compressTl.to(overlay, {
     width: "29vw",
     backgroundColor: "#ffffff",
     duration: 0.65,
     ease: "expo.out"
   }, TOP_DELAY);
 
-  compressTl.to(".menu_control-bar *", {
+  compressTl.to($controlBarChildren, {
     color: "#000000",
     duration: 0.6,
     ease: "sine.inOut"
   }, TOP_DELAY);
 
-  compressTl.to(".menu_profit-badge", {
+  compressTl.to($profitBadge, {
     width: "auto",
     opacity: 1,
     margin: "0 0.5vw",
@@ -99,7 +106,7 @@ function bootNavScroll() {
     ease: "expo.out"
   }, TOP_DELAY);
 
-  compressTl.to(".nav-profit-item", {
+  compressTl.to($profitItems, {
     opacity: 1,
     y: 0,
     duration: 0.9,
@@ -107,15 +114,13 @@ function bootNavScroll() {
     ease: "expo.out"
   }, TOP_DELAY);
 
-  compressTl.to(".nav-icon", {
+  compressTl.to($navIcon, {
     filter: "invert(1)",
     duration: 0.5,
     ease: "sine.inOut"
   }, TOP_DELAY);
 
-  // Иконки/таймер уходят в opacity + height за первые ~100px скролла.
-  // sine.inOut — без резкого 'обрубания'
-  compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
+  compressTl.to($sideIcons, {
     opacity: 0,
     height: 0,
     duration: 0.25,
@@ -152,30 +157,51 @@ function bootNavScroll() {
       },
       onUpdate: () => {
         if (menuOpen) return;
-        // Кнопка «вверх» / якорь #top делают lenis.scrollTo(0) — scroll
-        // прыгает в 0 быстро, но scrub:1.8 доводит compress-state ещё
-        // ~1.8s. За это время плашка зависает в полу-сжатом виде
-        // (расширилась но осталась белой). Фикс: если scrollY < 50 —
-        // мгновенно force decompress.
-        if (window.scrollY < 50 && compressTl.progress() > 0.05) {
-          compressTl.progress(0);
-          compressState.progress = 0;
-          return;
-        }
         compressTl.progress(compressState.progress);
       }
     });
 
-    // Force-reset инверсии при достижении top. navInvertTl scrub
-    // может догонять scroll-jump до 2s — за это время плашка стоит
-    // в чёрно-белом state. Догоняем сами через прямой gsap.to.
-    window.addEventListener("scroll", () => {
-      if (window.scrollY < 50 && navInvertTl?.scrollTrigger?.progress > 0.05) {
-        gsap.to(".menu_overlay-content", { backgroundColor: "#ffffff", duration: 0.4, overwrite: "auto" });
-        gsap.to(".menu_control-bar *", { color: "#000000", duration: 0.4, overwrite: "auto" });
-        gsap.to(".nav-logo_img", { filter: "invert(0)", duration: 0.4, overwrite: "auto" });
-        gsap.to(".nav-icon", { filter: "invert(1)", duration: 0.4, overwrite: "auto" });
+    // ---- Force-reset при jump в top ----
+    // scroll-listener стрельбает на каждый Lenis tick (60+ fps).
+    // Без оптимизаций тут запускалось 4 gsap.to() каждый кадр —
+    // лагало. Фиксы:
+    //   1. throttle через rAF (callback не чаще раза в кадр);
+    //   2. флаг forcedReset чтобы запускать gsap.to() ровно один раз
+    //      при пересечении границы 50px, а не на каждом кадре в зоне.
+    let scrollTickScheduled = false;
+    let forcedReset = false;
+
+    function onScrollCheck() {
+      const y = window.scrollY;
+
+      if (y < 50) {
+        if (forcedReset) return;
+        forcedReset = true;
+
+        // Compress: мгновенно вернуть в исходное состояние.
+        if (compressTl.progress() > 0.05) {
+          compressTl.progress(0);
+          compressState.progress = 0;
+        }
+        // Invert: догнать scrub-tween до finel light-state.
+        if (navInvertTl?.scrollTrigger?.progress > 0.05) {
+          gsap.to(overlay,       { backgroundColor: "#ffffff", duration: 0.4, overwrite: "auto" });
+          gsap.to($controlBarChildren, { color: "#000000",     duration: 0.4, overwrite: "auto" });
+          gsap.to($logo,         { filter: "invert(0)",         duration: 0.4, overwrite: "auto" });
+          gsap.to($navIcon,      { filter: "invert(1)",         duration: 0.4, overwrite: "auto" });
+        }
+      } else {
+        forcedReset = false;     // вышли из зоны — флаг готов к новому срабатыванию
       }
+    }
+
+    window.addEventListener("scroll", () => {
+      if (scrollTickScheduled) return;
+      scrollTickScheduled = true;
+      requestAnimationFrame(() => {
+        scrollTickScheduled = false;
+        onScrollCheck();
+      });
     }, { passive: true });
 
 
@@ -191,15 +217,15 @@ function bootNavScroll() {
       }
     });
 
-    navInvertTl.to(".menu_overlay-content",
+    navInvertTl.to(overlay,
       { backgroundColor: "#040101", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to(".menu_control-bar *",
+    navInvertTl.to($controlBarChildren,
       { color: "#ffffff", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to(".nav-btm, .nav-btm *",
+    navInvertTl.to($navBtmAll,
       { color: "#000000", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to(".nav-logo_img",
+    navInvertTl.to($logo,
       { filter: "invert(1)", duration: 1, immediateRender: false }, 0);
-    navInvertTl.to(".nav-icon",
+    navInvertTl.to($navIcon,
       { filter: "invert(0)", duration: 1, immediateRender: false }, 0);
   }
 
@@ -215,10 +241,10 @@ function bootNavScroll() {
 
   function applyInvertState(state) {
     const opts = { duration: INVERT_OVERRIDE_DURATION, ease: "expo.out", overwrite: "auto" };
-    gsap.to(".menu_overlay-content", { ...opts, backgroundColor: state.bg });
-    gsap.to(".menu_control-bar *",   { ...opts, color: state.color });
-    gsap.to(".nav-logo_img",         { ...opts, filter: state.logo });
-    gsap.to(".nav-icon",             { ...opts, filter: state.icon });
+    gsap.to(overlay,              { ...opts, backgroundColor: state.bg });
+    gsap.to($controlBarChildren,  { ...opts, color: state.color });
+    gsap.to($logo,                { ...opts, filter: state.logo });
+    gsap.to($navIcon,             { ...opts, filter: state.icon });
   }
 
   function isInInvertZone() {
