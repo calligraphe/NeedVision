@@ -14,10 +14,12 @@
 
 (() => {
   // Cinematic feel — duration mode с явным expo.out easing.
-  // wheelMultiplier 0.6 → шаг колеса мягче, lenis ленится тянуть позицию.
-  // На трекпаде MacOS и mouse wheel работает одинаково плавно.
-  const SCROLL_DURATION = 2.5;
-  const WHEEL_MULTIPLIER = 0.6;
+  // duration 3.1 (+25% к 2.5): длиннее inertia после каждого wheel-tick
+  // → ощущение «весомости» страницы, премиальный settle.
+  // wheelMultiplier 0.45 (-25% к 0.6): каждый щелчок колеса двигает
+  // меньше → невозможно резко проскролить, страница «солидно» едет.
+  const SCROLL_DURATION = 3.1;
+  const WHEEL_MULTIPLIER = 0.45;
   const ANCHOR_DURATION = 1.4;
   const EXPO_OUT = (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t));
 
