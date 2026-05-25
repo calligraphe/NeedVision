@@ -23,12 +23,16 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Юзер дал уникальные классы для каждой строки title/subtitle,
+  // чтобы их можно было анимировать независимо.
   const selectors = [
     ".hero_planet-img",
     ".hero_label",
-    ".hero_tag",
-    ".hero_title",
-    ".hero_subtitle"
+    ".hero_tag",          // querySelectorAll → 2 элемента
+    ".hero_title1",       // "Маркетинг"
+    ".hero_title2",       // "для недвижимости"
+    ".hero_subtitle1",    // "полного"
+    ".hero_subtitle2"     // "цикла"
   ];
 
   const inners = [];
