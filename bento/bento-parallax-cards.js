@@ -29,25 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // start: "top bottom" — анимация начинается как только секция
   // только-только показалась в нижнем краю экрана.
+  // end: "bottom top" — заканчивается когда блок ушёл за верх.
   //
-  // end: "bottom bottom" — анимация заканчивается когда нижний край
-  // секции достигает нижнего края вьюпорта (т.е. секция как раз
-  // целиком влезла на экран). Дальше скролл уже выводит секцию
-  // вверх, и следующая секция выезжает снизу поверх уехавших карточек.
-  // Раньше end:'bottom top' держал анимацию до самого конца sticky →
-  // следующая секция не успевала наехать на уходящие карточки.
-  //
-  // scrub: true — строгая 1:1 привязка к колесу. Не дёргается
-  // само, без inertia-доводки.
-  const tl = gsap.timeline({
-    scrollTrigger: {
-      trigger: ".parallax-sticky",
-      start: "top bottom",
-      end: "bottom bottom",
-      scrub: true,
-      invalidateOnRefresh: true
-    }
-  });
+  // One-way scrub: при скролле вниз tl следует за scroll-progress
+  // (как scrub:true), при скролле вверх остаётся на максимуме —
+  // карточки не исчезают обратно. Реализовано через отдельный
+  // ScrollTrigger без scrub + maxProgress в onUpdate.
+  const tl = gsap.timeline({ paused: true });
 
   // Фаза 1 — появление
   cards.forEach(card => {
@@ -83,5 +71,22 @@ document.addEventListener("DOMContentLoaded", () => {
       ease: "power2.in",
       force3D: true
     }, PHASE_1_DURATION + PAUSE_DURATION + exitDelay);
+  });
+
+  // One-way scrub: progress только растёт. Reverse при скролле вверх
+  // отключён → карточки не "схлопываются" обратно когда юзер уезжает
+  // вверх по странице.
+  let maxProgress = 0;
+  ScrollTrigger.create({
+    trigger: ".parallax-sticky",
+    start: "top bottom",
+    end: "bottom top",
+    invalidateOnRefresh: true,
+    onUpdate: (self) => {
+      if (self.progress > maxProgress) {
+        maxProgress = self.progress;
+        tl.progress(maxProgress);
+      }
+    }
   });
 });
