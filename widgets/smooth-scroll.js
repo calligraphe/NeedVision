@@ -13,13 +13,11 @@
  */
 
 (() => {
-  // Cinematic feel — duration mode с явным expo.out easing.
-  // duration 3.1 (+25% к 2.5): длиннее inertia после каждого wheel-tick
-  // → ощущение «весомости» страницы, премиальный settle.
-  // wheelMultiplier 0.45 (-25% к 0.6): каждый щелчок колеса двигает
-  // меньше → невозможно резко проскролить, страница «солидно» едет.
-  const SCROLL_DURATION = 3.1;
-  const WHEEL_MULTIPLIER = 0.45;
+  // duration 2.5 + wheelMultiplier 0.6 — проверенные юзером значения.
+  // duration 3.1 давал 'перебрасывает после паузы': Lenis после каждого
+  // wheel-tick запускал tween на 3.1с, на паузе ещё тянул к target.
+  const SCROLL_DURATION = 2.5;
+  const WHEEL_MULTIPLIER = 0.6;
   const ANCHOR_DURATION = 1.4;
   const EXPO_OUT = (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t));
 
@@ -75,20 +73,20 @@
     });
 
     // Sync со ScrollTrigger — без этого scrub-таймлайны (stages,
-    // nav compress, partner spotlight) задерживаются за scroll-position
+    // nav compress, partner spotlight) задерживаются за scroll-position.
     if (typeof ScrollTrigger !== "undefined") {
       lenis.on("scroll", ScrollTrigger.update);
     }
 
-    // Один общий rAF: GSAP ticker крутит и tweens, и Lenis-loop
-    if (typeof gsap !== "undefined") {
-      gsap.ticker.add((time) => lenis.raf(time * 1000));
-      gsap.ticker.lagSmoothing(0);
-    } else {
-      // Fallback если GSAP не загрузился раньше
-      const raf = (time) => { lenis.raf(time); requestAnimationFrame(raf); };
+    // Свой rAF, НЕ gsap.ticker. gsap.ticker по умолчанию засыпает
+    // когда нет активных tween'ов → Lenis не получает rAF → tween
+    // зависает на полпути → когда юзер снова скроллит, Lenis резко
+    // догоняет к старому target → юзер видит 'перебрасывает после паузы'.
+    function raf(time) {
+      lenis.raf(time);
       requestAnimationFrame(raf);
     }
+    requestAnimationFrame(raf);
 
     window.lenis = lenis;
 
