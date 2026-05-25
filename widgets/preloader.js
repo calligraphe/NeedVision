@@ -19,8 +19,8 @@ function bootPreloader() {
   const icons = Array.from(preloader.querySelectorAll(".preloader_icon"));
   if (icons.length === 0) return;
 
-  const FRAME_MS       = 135;    // кадр цикла, ~7 fps
-  const MIN_DISPLAY_MS = 1000;   // минимум видимости
+  const FRAME_MS       = 200;    // кадр цикла, 0.2с на каждое лого
+  const MIN_DISPLAY_MS = 200 * 9; // минимум — один полный цикл 1→9
   const FADE_DURATION  = 1.0;    // длительность fade-out
   const NAV_DELAY_MS   = 320;    // пауза перед location.href
 
@@ -74,30 +74,47 @@ function bootPreloader() {
     startCycle();
   }
 
+  // Ждём пока currentIdx дойдёт до последнего лого (9-й, индекс len-1).
+  // Без этого fade-out мог сработать посреди цикла → юзер видел резкий
+  // обрыв на 4-й или 7-й иконке. Теперь всегда полный 1→9 цикл.
+  function waitForCycleEnd(callback) {
+    if (!cycleRunning || currentIdx === icons.length - 1) {
+      callback();
+      return;
+    }
+    const check = () => {
+      if (currentIdx === icons.length - 1) callback();
+      else requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }
+
   function hidePreloader() {
     if (navigating) return;  // уходим на другую страницу — не гасим
     const elapsed = performance.now() - shownAt;
     const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
 
     setTimeout(() => {
-      const onDone = () => {
-        stopCycle();
-        preloader.style.display = "none";
-        unlockUI();
-      };
+      waitForCycleEnd(() => {
+        const onDone = () => {
+          stopCycle();
+          preloader.style.display = "none";
+          unlockUI();
+        };
 
-      if (typeof gsap !== "undefined") {
-        gsap.to(preloader, {
-          opacity: 0,
-          duration: FADE_DURATION,
-          ease: "expo.out",
-          onComplete: onDone
-        });
-      } else {
-        preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
-        preloader.style.opacity = "0";
-        setTimeout(onDone, FADE_DURATION * 1000);
-      }
+        if (typeof gsap !== "undefined") {
+          gsap.to(preloader, {
+            opacity: 0,
+            duration: FADE_DURATION,
+            ease: "expo.out",
+            onComplete: onDone
+          });
+        } else {
+          preloader.style.transition = `opacity ${FADE_DURATION}s cubic-bezier(0.16, 1, 0.3, 1)`;
+          preloader.style.opacity = "0";
+          setTimeout(onDone, FADE_DURATION * 1000);
+        }
+      });
     }, wait);
   }
 
