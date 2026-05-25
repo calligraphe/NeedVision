@@ -43,15 +43,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Autoplay-timeline. Каждый элемент: duration 1.5с + stagger 0.4с
-  // → суммарно ~1.5 + 0.4*5 = 3.5 секунды от первого до последнего.
-  // ease 'power2.in' — начинают медленно, ускоряются к концу.
+  // Autoplay-timeline. duration 1.5с + stagger 0.3с.
+  // 8 элементов (planet, label, 2×tag, 2×title, 2×subtitle):
+  // total = 1.5 + 0.3*7 = ~3.6с от первого до последнего.
+  // ease 'power2.in' — медленный старт, ускорение к концу.
   const tl = gsap.timeline({ paused: true });
   tl.to(inners, {
     yPercent: -100,
     duration: 1.5,
     ease: "power2.in",
-    stagger: 0.4
+    stagger: 0.3
   });
 
   ScrollTrigger.create({
