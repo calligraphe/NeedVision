@@ -171,43 +171,64 @@ function bootStagesAnimation() {
 
 
   // ---- Autoplay-переход между этапами ----
-  // Запускается когда scroll-порог пересечён. fromIdx/toIdx могут
-  // отличаться больше чем на 1 (быстрый скролл) — анимация всё равно
-  // корректно переключит wrapper'ы.
+  // currentIdx обновляется СИНХРОННО при входе в playTransition
+  // (не в onComplete), иначе activeTl.kill() оставляет state
+  // в полу-анимации, а onUpdate видит старый currentIdx и
+  // вызывает playTransition уже с неактуальным fromIdx.
   let currentIdx = 0;
   let activeTl = null;
 
+  // Принудительно ставит state всех wrappers под текущий fromIdx/toIdx:
+  // активный (тот что ехать в) — visible+ready, все остальные — скрыты
+  // и слова за маской. Защита от полу-состояний после kill'а.
+  function syncStateBefore(fromIdx, toIdx) {
+    wrappers.forEach((w, i) => {
+      const words = w.querySelectorAll(".stages_word");
+      if (i === fromIdx) {
+        // Сцена ухода: from-wrapper видим, слова на месте (0)
+        gsap.set(w, { autoAlpha: 1 });
+        gsap.set(words, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
+      } else if (i === toIdx) {
+        // Сцена входа: toIdx-wrapper будет показан tween'ом, слова
+        // за маской (но autoAlpha поставим в tween, иначе мигает)
+        gsap.set(w, { autoAlpha: 0 });
+      } else {
+        // Остальные — спрятаны полностью
+        gsap.set(w, { autoAlpha: 0 });
+        gsap.set(words, { yPercent: 100, opacity: 0, filter: "blur(8px)" });
+      }
+    });
+  }
+
   function playTransition(fromIdx, toIdx) {
     if (fromIdx === toIdx) return;
+
+    // Сразу обновляем currentIdx — следующий onUpdate увидит актуальное
+    currentIdx = toIdx;
+
     if (activeTl) activeTl.kill();
+
+    syncStateBefore(fromIdx, toIdx);
 
     const fromWords = wrappers[fromIdx].querySelectorAll(".stages_word");
     const toWords = wrappers[toIdx].querySelectorAll(".stages_word");
     const forward = toIdx > fromIdx;
-
-    // Stagger 'start' для forward (поток слева-направо), 'end' для backward
     const staggerFrom = forward ? "start" : "end";
 
-    activeTl = gsap.timeline({
-      onComplete: () => {
-        currentIdx = toIdx;
-      }
-    });
+    activeTl = gsap.timeline();
 
-    // Уход текущих: вверх (forward) или вниз (backward)
     activeTl.to(fromWords, {
       yPercent: forward ? -100 : 100,
       opacity: 0,
       filter: "blur(8px)",
       duration: 0.85,
       stagger: { each: 0.022, from: staggerFrom },
-      ease: "power3.inOut"
+      ease: "power3.inOut",
+      overwrite: "auto"
     }, 0);
 
-    // Показываем следующий wrapper
     activeTl.set(wrappers[toIdx], { autoAlpha: 1 }, 0);
 
-    // Появление новых: снизу (forward) или сверху (backward)
     activeTl.fromTo(toWords,
       {
         yPercent: forward ? 100 : -100,
@@ -220,21 +241,25 @@ function bootStagesAnimation() {
         filter: "blur(0px)",
         duration: 1.05,
         stagger: { each: 0.028, from: staggerFrom },
-        ease: "power3.out"
+        ease: "power3.out",
+        overwrite: "auto"
       },
       0.35);
 
-    // Скрываем from-wrapper после ухода
     activeTl.set(wrappers[fromIdx], { autoAlpha: 0 }, 0.85);
 
-    // Лейбл «ЭТАП N» — blur-морфинг
     if (stepLabel) {
+      // Force-reset перед анимацией — на случай если предыдущий лейбл-tween
+      // был kill'нут посреди blur/yPercent
+      gsap.set(stepLabel, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
+
       activeTl.to(stepLabel, {
         yPercent: forward ? -100 : 100,
         opacity: 0,
         filter: "blur(4px)",
         duration: 0.4,
-        ease: "power3.in"
+        ease: "power3.in",
+        overwrite: "auto"
       }, 0);
 
       activeTl.set(stepLabel, {
@@ -249,18 +274,16 @@ function bootStagesAnimation() {
         opacity: 1,
         filter: "blur(0px)",
         duration: 0.5,
-        ease: "power3.out"
+        ease: "power3.out",
+        overwrite: "auto"
       }, 0.4);
     }
 
-    // Пагинация — мгновенный switch (а не tween) — выглядит уверенно
     setActiveDot(toIdx);
   }
 
 
   // ---- Триггер: scroll-position → idx → playTransition ----
-  // Один ScrollTrigger.onUpdate определяет текущий этап по progress
-  // секции. При смене idx запускается autoplay-переход.
   ScrollTrigger.create({
     trigger: ".stages",
     start: "top top",
