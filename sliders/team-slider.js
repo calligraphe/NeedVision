@@ -1,54 +1,20 @@
 /**
- * NEED.VISION — Слайдер команды (кастомный, с замером слотов)
- * ===========================================================
+ * Слайдер команды. Активная карточка по центру — крупнее остальных.
  *
- * Что делает: горизонтальная карусель карточек команды с активным слотом
- *             по центру (карточка крупнее и выделена). Перед инициализацией
- *             замеряет реальные позиции слотов и разделителей из Webflow-
- *             вёрстки и переводит элементы в `position: absolute` —
- *             благодаря этому анимация в `vw` остаётся отзывчивой и
- *             точной на любом экране.
+ * Перед стартом замеряем позиции слотов и разделителей в Webflow-вёрстке,
+ * переводим всё в position:absolute и дальше дёргаем только x/bottom/w/h
+ * в vw. Так анимация остаётся отзывчивой на любом экране, без перезамера.
  *
- *             Тексты роли/цитаты/описания и подпись активного участника
- *             меняются с мягким блюром (6px → 0, без артефактов на
- *             ретине). Управление — кнопка `next`, клики по карточкам/
- *             точкам, mouse-drag и touch-swipe.
- *
- * Зависимости:
- *   - GSAP 3.12.x
- *
- * Webflow селекторы:
- *   - .team_photo-track          — корневая дорожка слайдера
- *   - .team_photo-slide          — карточки участников
- *   - .team_photo-slide.is-active — стартовый активный слайд (один из них)
- *   - .team_div                  — вертикальные разделители между слотами
- *   - .team_nav-btn              — кнопка «следующий»
- *   - .team_dot                  — точки-индикаторы
- *   - .team_dot-full             — внутренний заполнитель точки
- *   - .team_member-header        — шапка карточки с именем (видна только у активной)
- *   - .team_member-header.is-hidden — стартовое состояние неактивных шапок (снимается)
- *   - .team_data-role            — источник данных: роль участника
- *   - .team_data-quote           — источник данных: цитата
- *   - .team_data-description     — источник данных: описание
- *   - .team_data-sign            — источник данных: подпись (img)
- *   - .team_role-text            — «монитор» роли
- *   - .team_quote-text           — «монитор» цитаты
- *   - .team_desc-text            — «монитор» описания
- *   - .team-sign                 — «монитор» подписи (img)
- *   - .team_info-meta .label-wrapper — обёртки лейблов; во второй пишется номер слайда
- *
- * Подключение:
- *   <script src="https://cdn.jsdelivr.net/gh/calligraphe/NeedVision@main/sliders/team-slider.js"></script>
+ * Тексты роли/цитаты/описания/подпись меняются с лёгким blur (6→0).
+ * Управление: кнопка next, клики по карточкам и точкам, mouse-drag и touch.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ---- Проверка зависимостей ----
   if (typeof gsap === "undefined") {
-    console.warn("[Need Vision] team-slider.js: GSAP не загружен");
+    console.warn("team-slider.js: GSAP не загружен");
     return;
   }
 
-  // ---- Проверка наличия элементов ----
   const track = document.querySelector('.team_photo-track');
   const slides = gsap.utils.toArray('.team_photo-slide');
   if (!track || slides.length === 0) return;
@@ -57,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const nextBtn = document.querySelector('.team_nav-btn');
   const dots = gsap.utils.toArray('.team_dot');
 
-  // Кэш DOM на init — раньше querySelector летел на каждом свиче слайда.
+  // Кэш — querySelector раньше летел на каждом свиче.
   const slideHeaders = slides.map(s => s.querySelector('.team_member-header'));
   const dotFulls = dots.map(d => d.querySelector('.team_dot-full'));
 
@@ -74,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ? metaLabels[1].querySelectorAll('.label-text')[1]
     : null;
 
-  // ---- Тайминги ----
   const ANIM_DURATION = 1.0;
   const ANIM_EASE = "power2.inOut";
   const DRAG_THRESHOLD_MOUSE = 50;
@@ -83,9 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const totalSlides = slides.length;
   let isAnimating = false;
 
-  // ============================================
-  // 1. ЗАМЕРЯЕМ ИСХОДНУЮ ВЁРСТКУ WEBFLOW
-  // ============================================
+  // Снимаем размеры/позиции слотов из Webflow до перехода в absolute
   let initialActiveIdx = 0;
   slides.forEach((slide, i) => {
     if (slide.classList.contains('is-active')) {
@@ -135,9 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ============================================
-  // 2. ПЕРЕВОДИМ В ABSOLUTE
-  // ============================================
+  // Переводим трек и всё внутри в absolute по снятым координатам
   track.style.cssText += `
     display: block !important;
     position: relative !important;
@@ -183,8 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Стартовое состояние пагинации: активная точка горит, остальные — нет.
-  // Без этого Webflow держит все .team_dot-full скрытыми до первого клика.
+  // Webflow держит .team_dot-full скрытыми до первого взаимодействия —
+  // подсвечиваем активную точку руками.
   dots.forEach((dot, i) => {
     const full = dot.querySelector('.team_dot-full');
     if (full) {
@@ -211,9 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     gsap.set(div, { x: `${dividerPositions[i].x}vw` });
   });
 
-  // ============================================
-  // 3. ЛОГИКА КАРУСЕЛИ
-  // ============================================
+  // Маппинг "какая карточка → в каком физическом слоте" с учётом цикла
   function getPhysicalSlot(cardIndex) {
     let diff = cardIndex - activeIndex;
     if (diff > Math.floor(totalSlides / 2)) diff -= totalSlides;
@@ -239,9 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // ============================================
-  // 4. ОБНОВЛЕНИЕ КАРУСЕЛИ
-  // ============================================
   function updateSlider(newIndex) {
     if (isAnimating) return;
     isAnimating = true;
@@ -284,9 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateTexts(slides[activeIndex], activeIndex + 1);
   }
 
-  // ============================================
-  // 5. ТЕКСТЫ — МЯГКИЙ БЛЮР БЕЗ АРТЕФАКТОВ
-  // ============================================
   function updateTexts(activeSlide, currentNum) {
     const newRole = activeSlide.querySelector('.team_data-role')?.innerHTML || '';
     const newQuote = activeSlide.querySelector('.team_data-quote')?.innerHTML || '';
@@ -302,7 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const elements = [targetRole, targetQuote, targetDesc, targetSign, targetNum].filter(el => el);
     if (elements.length === 0) return;
 
-    // Подготавливаем слои заранее — убирает «квадрат» от blur'а на ретине
+    // will-change + backface-visibility — иначе blur даёт «квадрат» на ретине
     elements.forEach(el => {
       el.style.willChange = "filter, transform, opacity";
       el.style.backfaceVisibility = "hidden";
@@ -310,14 +263,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const tl = gsap.timeline({
       onComplete: () => {
-        // Снимаем will-change после анимации, чтобы не нагружать GPU
-        elements.forEach(el => {
-          el.style.willChange = "auto";
-        });
+        // will-change держим только на время анимации
+        elements.forEach(el => { el.style.willChange = "auto"; });
       }
     });
 
-    // Уход: лёгкий блюр + опускание + прозрачность
+    // Уход
     tl.to(elements, {
       y: -10,
       opacity: 0,
@@ -327,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ease: "power2.in"
     });
 
-    // Подмена контента
+    // Подмена контента в невидимом состоянии
     tl.call(() => {
       if (targetRole) targetRole.innerHTML = newRole;
       if (targetQuote) targetQuote.innerHTML = newQuote;
@@ -339,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Появление: из лёгкого блюра + снизу
+    // Появление
     tl.fromTo(elements,
       {
         y: 10,
@@ -357,9 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  // ============================================
-  // 6. УПРАВЛЕНИЕ
-  // ============================================
+  // Управление: кнопка, клики, drag/touch
   function nextSlide() { updateSlider((activeIndex + 1) % totalSlides); }
   function prevSlide() { updateSlider((activeIndex - 1 + totalSlides) % totalSlides); }
 

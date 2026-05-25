@@ -1,13 +1,10 @@
 /**
  * Секция «Этапы»: три скролл-анимации.
- *
- * 1. На входе фонарик .spotlight-overlay гаснет, .about-wrapper
- *    меняет фон на кремовый.
- * 2. Каждый .stages_img выезжает снизу, проявляется и расфокусируется
- *    (blur 12 → 0).
- * 3. Барабанная смена текстов .stages_text-wrapper через «белое свечение»
- *    (text-shadow вместо blur — нет артефактов на ретине). Параллельно
- *    переключаются точки .stages_dot-full/empty и лейбл этапа.
+ *  — на входе гаснет фонарик, фон about меняется на кремовый;
+ *  — каждый .stages_img выезжает снизу с расфокусом (blur 12 → 0);
+ *  — барабанная смена текстов через «белое свечение» (text-shadow,
+ *    а не blur — на ретине blur даёт квадрат вокруг текста).
+ * Параллельно тикают точки .stages_dot-full/empty и лейбл «ЭТАП N».
  */
 
 function bootStagesAnimation() {
@@ -25,9 +22,7 @@ function bootStagesAnimation() {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // ==========================================
-  // 1. СМЕНА ФОНА И ЗАТУХАНИЕ ФОНАРИКА
-  // ==========================================
+  // Фон секции и фонарик при входе в .stages
   const bgChangeTl = gsap.timeline({
     scrollTrigger: {
       trigger: ".stages",
@@ -48,9 +43,7 @@ function bootStagesAnimation() {
   }, 0.3);
 
 
-  // ==========================================
-  // 2. STAGES_IMG — появление с блюром
-  // ==========================================
+  // .stages_img — выезжают снизу с расфокусом
   const stageImages = gsap.utils.toArray(".stages_img");
 
   stageImages.forEach((img) => {
@@ -78,9 +71,8 @@ function bootStagesAnimation() {
   });
 
 
-  // ==========================================
-  // 3. БАРАБАННЫЙ СКРОЛЛ — БЕЛОЕ СВЕЧЕНИЕ ВМЕСТО БЛЮРА
-  // ==========================================
+  // Барабанная смена текстов. Свечение через text-shadow вместо blur —
+  // на ретине blur даёт «квадрат» вокруг текста, shadow чистый.
   const wrappers = gsap.utils.toArray(".stages_text-wrapper");
   const dotsFull = gsap.utils.toArray(".stages_dot-full");
   const dotsEmpty = gsap.utils.toArray(".stages_dot-empty");
