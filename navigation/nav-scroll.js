@@ -135,8 +135,9 @@ function bootNavScroll() {
   const isStaticNav = document.body?.dataset?.navMode === "static";
 
   // compressState.progress — куда вернуть плашку при закрытии меню.
-  // Mobile/static: всегда 1. Desktop: обновляется scroll-proxy.
-  const compressState = { progress: (isStaticNav || isMobile) ? 1 : 0 };
+  // Static: всегда 1. Desktop scrub / mobile triggered: 0 на init,
+  // обновляется при скролле.
+  const compressState = { progress: isStaticNav ? 1 : 0 };
   let menuOpen = false;
 
   // Объявлен снаружи — openMenu/closeMenu проверяют через него
@@ -146,10 +147,26 @@ function bootNavScroll() {
   if (isStaticNav) {
     compressTl.progress(1);
   } else if (isMobile) {
-    // Autoplay — играет timeline от 0 до 1 за свою длительность
-    // (~0.73с). Получается мягкая «приветственная» анимация плашки,
-    // без привязки к scroll. Дальше юзер скроллит, JS ничего не делает.
-    compressTl.play(0);
+    // Mobile: триггер по скроллу, но НЕ scrub.
+    //   юзер скроллит вниз (за 50px) → compressTl.play() — проигрывается
+    //     вперёд за свою длительность (~0.73с), плавно;
+    //   юзер вернулся вверх → compressTl.reverse() — играет назад.
+    // Это даёт ту же логику что desktop scrub, но без лагов: timeline
+    // проигрывается за фикс. время, не дёргается под каждый touch-tick.
+    ScrollTrigger.create({
+      trigger: "body",
+      start: "50px top",
+      onEnter: () => {
+        if (menuOpen) return;
+        compressTl.play();
+        compressState.progress = 1;
+      },
+      onLeaveBack: () => {
+        if (menuOpen) return;
+        compressTl.reverse();
+        compressState.progress = 0;
+      }
+    });
   } else {
     // Скролл двигает proxy через scrub:1 → плавно. Когда меню открыто,
     // игнорируем апдейты, чтобы не перебивать клик-анимацию.
