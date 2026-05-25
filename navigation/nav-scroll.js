@@ -25,6 +25,13 @@ function bootNavScroll() {
   const overlay = document.querySelector(".menu_overlay-content");
   if (!overlay) return;
 
+  // На мобиле (≤991px) вся scroll/compress-логика выключена.
+  // Лого, плашка, инверсия — лагало (filter, scale tween на каждый
+  // scroll-tick + конфликт с Webflow mobile-разметкой). Пусть Webflow
+  // сам управляет мобильной навигацией через свои breakpoint-стили
+  // и встроенный navbar.
+  if (window.matchMedia("(max-width: 991px)").matches) return;
+
   gsap.registerPlugin(ScrollTrigger);
 
   // ---- Стартовое состояние ----
@@ -125,13 +132,8 @@ function bootNavScroll() {
   // ---- Режим: scroll-driven или static ----
   // body[data-nav-mode="static"] → плашка сразу в финальном виде,
   // без ScrollTrigger и без navInvertTl. Меню по клику работает обычно.
-  //
-  // На мобилке (≤991px) тоже static: scroll-compress на мобиле
-  // выглядит криво (Webflow на мобиле уже даёт плашке полную
-  // ширину, scrub-tween на touch без Lenis работает рывками,
-  // filter:invert/blur сильно тормозят на слабых девайсах).
-  const isStaticNav = document.body?.dataset?.navMode === "static"
-    || window.matchMedia("(max-width: 991px)").matches;
+  // (мобилка обрабатывается ранним return выше)
+  const isStaticNav = document.body?.dataset?.navMode === "static";
 
   // compressState.progress хранит «куда вернуть плашку при закрытии меню».
   // В scroll-режиме обновляется ScrollTrigger'ом, в static — фиксирован на 1.
