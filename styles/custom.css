@@ -1,15 +1,6 @@
 /* Кастомные стили под скрипты. */
 
 
-/* 0.00 Safety: горизонтальный скролл никогда не должен появляться.
-   Lenis убрал нативный overflow:hidden с body (там auto height),
-   и теперь любой translateX или элемент >100vw создаёт hscroll. */
-html, body {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
-
-
 /* 0. Lenis smooth scroll — нативный body-скролл выключаем,
    Lenis сам управляет позицией. */
 html.lenis, html.lenis body {
