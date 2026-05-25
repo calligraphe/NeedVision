@@ -25,14 +25,13 @@ function bootNavScroll() {
   const overlay = document.querySelector(".menu_overlay-content");
   if (!overlay) return;
 
-  // На мобиле (≤991px) вся scroll/compress-логика выключена.
-  // Лого, плашка, инверсия — лагало (filter, scale tween на каждый
-  // scroll-tick + конфликт с Webflow mobile-разметкой). Пусть Webflow
-  // сам управляет мобильной навигацией через свои breakpoint-стили
-  // и встроенный navbar.
-  if (window.matchMedia("(max-width: 991px)").matches) return;
-
   gsap.registerPlugin(ScrollTrigger);
+
+  // На мобиле scroll-driven scrub лагает (filter/scale на каждый
+  // scroll-tick на слабом GPU). Решение: один раз проиграть compressTl
+  // как autoplay при загрузке — плашка сразу анимированно встаёт в
+  // финальный вид, дальше юзер просто скроллит без вмешательства JS.
+  const isMobile = window.matchMedia("(max-width: 991px)").matches;
 
   // ---- Стартовое состояние ----
 
@@ -129,23 +128,28 @@ function bootNavScroll() {
   }, 0);
 
 
-  // ---- Режим: scroll-driven или static ----
-  // body[data-nav-mode="static"] → плашка сразу в финальном виде,
-  // без ScrollTrigger и без navInvertTl. Меню по клику работает обычно.
-  // (мобилка обрабатывается ранним return выше)
+  // ---- Режим: scroll-driven, static или mobile-autoplay ----
+  // body[data-nav-mode="static"] → плашка сразу в финальном виде.
+  // mobile (≤991px) → autoplay compressTl при загрузке, без scrub.
+  // desktop → scroll-driven scrub.
   const isStaticNav = document.body?.dataset?.navMode === "static";
 
-  // compressState.progress хранит «куда вернуть плашку при закрытии меню».
-  // В scroll-режиме обновляется ScrollTrigger'ом, в static — фиксирован на 1.
-  const compressState = { progress: isStaticNav ? 1 : 0 };
+  // compressState.progress — куда вернуть плашку при закрытии меню.
+  // Mobile/static: всегда 1. Desktop: обновляется scroll-proxy.
+  const compressState = { progress: (isStaticNav || isMobile) ? 1 : 0 };
   let menuOpen = false;
 
-  // Объявлен снаружи — openMenu/closeMenu проверяют через него,
-  // находимся ли мы сейчас в зоне инверсии над .stages.
+  // Объявлен снаружи — openMenu/closeMenu проверяют через него
+  // (на мобиле остаётся null, isInInvertZone вернёт false).
   let navInvertTl = null;
 
   if (isStaticNav) {
     compressTl.progress(1);
+  } else if (isMobile) {
+    // Autoplay — играет timeline от 0 до 1 за свою длительность
+    // (~0.73с). Получается мягкая «приветственная» анимация плашки,
+    // без привязки к scroll. Дальше юзер скроллит, JS ничего не делает.
+    compressTl.play(0);
   } else {
     // Скролл двигает proxy через scrub:1 → плавно. Когда меню открыто,
     // игнорируем апдейты, чтобы не перебивать клик-анимацию.
