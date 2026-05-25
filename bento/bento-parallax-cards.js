@@ -21,18 +21,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // Длительности в условных единицах timeline (привязка к scrub-скроллу).
+  // Длительности в условных единицах timeline (это пропорции внутри
+  // одного scroll-distance, не секунды).
   const PHASE_1_DURATION = 5;
   const PAUSE_DURATION = 1;
   const PHASE_2_DURATION = 5;
-  const SCRUB = 3;
 
+  // start: "top bottom" — анимация начинается как только секция
+  // только-только показалась в нижнем краю экрана. Раньше было
+  // "top top" → между предыдущей секцией и первым движением
+  // была мёртвая чёрная зона.
+  //
+  // end: "bottom top+=40%" — анимация идёт даже когда блок уже
+  // ушёл за верх. Растягивает scroll-distance ещё на ~40vh
+  // → суммарно ~1.4× от старой длины анимации.
+  //
+  // scrub: true (а не число) — каждое движение строго привязано
+  // к колесу. Не дёргается само, без inertia-доводки.
   const tl = gsap.timeline({
     scrollTrigger: {
       trigger: ".parallax-sticky",
-      start: "top top",
-      end: "bottom top",
-      scrub: SCRUB,
+      start: "top bottom",
+      end: "bottom top+=40%",
+      scrub: true,
       invalidateOnRefresh: true
     }
   });
