@@ -95,6 +95,16 @@ html.lenis, html.lenis body {
 }
 
 
+/* 2.1 Cases-слайдер: курсор-pointer (пальчик) на самих карточках.
+   Drag-zone родителя имеет cursor:grab → дети наследуют. На контенте
+   карточки переопределяем на pointer — визуально подсказывает «клик»,
+   а не «таскать». Драг через Observer всё равно работает. */
+.case_card-content,
+.case_card-content * {
+  cursor: pointer;
+}
+
+
 /* 3. Swiper-версия team-слайдера. Не используется если активна кастомная
    sliders/team-slider.js. */
 .swiper-slide {
