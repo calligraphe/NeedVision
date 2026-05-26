@@ -114,8 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tl.to(card, {
       opacity: 0,
-      duration: PHASE_2_DURATION * 0.4,
+      duration: PHASE_2_DURATION * 0.15,
       ease: "power1.in"
-    }, phase2Start + PHASE_2_DURATION * 0.6);
+    }, phase2Start + PHASE_2_DURATION * 0.85);
   });
 });
