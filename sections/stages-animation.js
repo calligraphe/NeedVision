@@ -94,19 +94,28 @@ function bootStagesAnimation() {
 
 
   // ---- Пагинация (прямой opacity с !important — IX2-proof) ----
+  // Webflow IX2 биндит data-w-id и оставляет inline transform/opacity
+  // как остаток от своих interactions. Стрипаем рекурсивно по всему
+  // дереву .stages_pagination, плюс чистим residual inline-styles.
   const dotInners = [];
-  dots.forEach((dot) => {
-    dot.removeAttribute("data-w-id");
-    const full = dot.querySelector(".stages_dot-full");
-    const empty = dot.querySelector(".stages_dot-empty");
-    if (full) full.removeAttribute("data-w-id");
-    if (empty) empty.removeAttribute("data-w-id");
-    dotInners.push({ full, empty });
-  });
+
   if (stagesPagination) {
+    stagesPagination.querySelectorAll("[data-w-id]").forEach(el => el.removeAttribute("data-w-id"));
     stagesPagination.removeAttribute("data-w-id");
     stagesPagination.style.setProperty("opacity", "1", "important");
   }
+
+  dots.forEach((dot) => {
+    const full = dot.querySelector(".stages_dot-full");
+    const empty = dot.querySelector(".stages_dot-empty");
+    [dot, full, empty].forEach(el => {
+      if (!el) return;
+      // Сносим Webflow-residual transform — может ломать видимость
+      el.style.removeProperty("transform");
+      el.style.setProperty("transition", "opacity 0.35s ease", "important");
+    });
+    dotInners.push({ full, empty });
+  });
 
   function setActiveDot(index) {
     dotInners.forEach(({ full, empty }, i) => {
@@ -115,6 +124,13 @@ function bootStagesAnimation() {
       if (empty) empty.style.setProperty("opacity", isActive ? "0" : "1", "important");
     });
   }
+
+  // Повторно применяем через паузы — Webflow IX2 может перезаписать
+  // opacity спустя ~50-200ms после нашего init (его собственный pageload tween).
+  function reapplyActiveDot() { setActiveDot(currentStep); }
+  setTimeout(reapplyActiveDot, 100);
+  setTimeout(reapplyActiveDot, 500);
+  setTimeout(reapplyActiveDot, 1500);
 
 
   // ---- Word split ----
