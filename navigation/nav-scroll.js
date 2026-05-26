@@ -190,7 +190,7 @@ function bootNavScroll() {
       scrollTrigger: {
         trigger: "body",
         start: "top top",
-        end: "+=5vw",
+        end: "+=165vw",
         scrub: 1
       },
       onUpdate: () => {
