@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   gsap.to(".hero__img", {
-    width: "45vw",
+    width: "40vw",
     ease: "none",          // под scrub — иначе будет «дёргать» к концу
     scrollTrigger: {
       trigger: ".hero-image",
