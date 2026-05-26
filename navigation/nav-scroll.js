@@ -78,6 +78,14 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
+  // .nav-wrapper приподнимается вверх на 0.4vw синхронно с лого —
+  // компенсирует визуальное смещение, плашка прилегает к верху.
+  compressTl.to(".nav-wrapper", {
+    marginTop: "-0.4vw",
+    duration: 0.25,
+    ease: "power2.out"
+  }, 0);
+
   compressTl.to(".menu_overlay-content", {
     width: "24vw",
     backgroundColor: "#ffffff",
