@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // одного scroll-distance, не секунды).
   const PHASE_1_DURATION = 5;
   const PAUSE_DURATION = 4.06;       // +30% к 3.12
-  const PHASE_2_DURATION = 20.28;    // +30% к 15.6
+  const PHASE_2_DURATION = 25;       // 20.28 → 25
 
   // start: "top bottom" — анимация начинается как только секция
   // показалась снизу.
@@ -114,8 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tl.to(card, {
       opacity: 0,
-      duration: PHASE_2_DURATION * 0.25,
+      duration: PHASE_2_DURATION * 0.4,
       ease: "power1.in"
-    }, phase2Start + PHASE_2_DURATION * 0.75);
+    }, phase2Start + PHASE_2_DURATION * 0.6);
   });
 });
