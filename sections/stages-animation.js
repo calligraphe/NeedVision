@@ -182,6 +182,17 @@ function bootStagesAnimation() {
     currentStep = target;
     setActiveDot(target);
 
+    if (activeTween) activeTween.kill();
+
+    // Очистка orphan-wrappers: если прошлый переход был убит до своего
+    // финального tl.set(fromWrap, autoAlpha:0) — этот wrapper остался
+    // видимым и накладывался поверх новых. Жёстко прячем всех кроме
+    // fromIdx и target.
+    wrappers.forEach((wrap, i) => {
+      if (i === fromIdx || i === target) return;
+      gsap.set(wrap, { autoAlpha: 0 });
+    });
+
     const fromWrap = wrappers[fromIdx];
     const toWrap = wrappers[target];
     const fromWords = fromWrap.querySelectorAll(".stages_word");
@@ -189,8 +200,6 @@ function bootStagesAnimation() {
 
     const exitY = direction > 0 ? -100 : 100;
     const entryY = direction > 0 ? 100 : -100;
-
-    if (activeTween) activeTween.kill();
 
     const tl = gsap.timeline({
       onComplete: () => { activeTween = null; }
