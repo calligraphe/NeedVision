@@ -1,11 +1,12 @@
 /**
- * Hero exit. Autoplay-timeline (НЕ scrub). Элементы внутри
- * .hero_item-mask (overflow:hidden) уезжают yPercent:-100.
+ * Hero exit. Scrub-таймлайн: элементы исчезают по мере скролла
+ * на 70vw высоты. Внутри .hero_item-mask (overflow:hidden)
+ * уезжают yPercent:-110 + opacity.
  *
  * Debug-режим: console.log запуска и найденных элементов —
  * открой DevTools Console чтобы понять что не так.
  *
- * Build: 2026-05-25-v2
+ * Build: 2026-05-26-scrub70vw
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,29 +63,24 @@ document.addEventListener("DOMContentLoaded", () => {
     inners.forEach((el) => el.removeAttribute("data-w-id"));
   }, 500);
 
-  const tl = gsap.timeline({ paused: true });
-  // Тройной транспорт: yPercent (по высоте элемента) + y в px (на случай
-  // если высота 0 / element inline / yPercent не считается) + opacity.
-  // Хотя бы один из трёх гарантированно скроет элемент за маской.
+  // Scrub-таймлайн привязан к скроллу: end = +70vw высоты.
+  // Тройной транспорт (yPercent + y vw + opacity) как failsafe,
+  // чтобы хоть одна из трансформаций гарантированно скрыла элемент.
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: "body",
+      start: "top top",
+      end: () => "+=" + (window.innerWidth * 0.7),
+      scrub: 1,
+      invalidateOnRefresh: true
+    }
+  });
+
   tl.to(inners, {
     yPercent: -110,
     y: "-13.89vw",
     opacity: 0,
-    duration: 1.5,
     ease: "power2.in",
     stagger: 0.3
-  });
-
-  ScrollTrigger.create({
-    trigger: "body",
-    start: "top top-=6.94vw",
-    onEnter: () => {
-      console.log("[hero-exit] onEnter → play");
-      tl.play();
-    },
-    onLeaveBack: () => {
-      console.log("[hero-exit] onLeaveBack → reverse");
-      tl.reverse();
-    }
   });
 });
