@@ -73,7 +73,7 @@ function bootNavScroll() {
   gsap.set(".nav-logo_img", { transformOrigin: "left center", force3D: true });
   compressTl.to(".nav-logo_img", {
     scale: 0.54,
-    y: "2.6vw",
+    y: "2.5vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
