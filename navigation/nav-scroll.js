@@ -73,7 +73,7 @@ function bootNavScroll() {
   gsap.set(".nav-logo_img", { transformOrigin: "left center", force3D: true });
   compressTl.to(".nav-logo_img", {
     scale: 0.54,
-    y: "2.5vw",
+    y: "2vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
@@ -139,10 +139,12 @@ function bootNavScroll() {
     const p = compressTl.progress();
     if (p >= PROFIT_THRESHOLD && !profitShown) {
       profitShown = true;
-      profitTl.play();
+      profitTl.timeScale(1).play();
     } else if (p < PROFIT_THRESHOLD && profitShown) {
       profitShown = false;
-      profitTl.reverse();
+      // Reverse 2× быстрее — при резком скролле вверх юзер успевает
+      // увидеть как profit ушёл, не оставляет хвост поверх плашки.
+      profitTl.timeScale(2).reverse();
     }
   });
 
