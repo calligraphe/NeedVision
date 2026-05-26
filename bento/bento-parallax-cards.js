@@ -74,8 +74,10 @@ document.addEventListener("DOMContentLoaded", () => {
   tl.to({}, { duration: PAUSE_DURATION });
 
   // Фаза 2 — уход. Дефолтный endY -1200: карточка ~800px высотой
-  // успевает полностью уехать за верх. Opacity отложен на вторую
-  // половину фазы — карточка уезжает заметно, потом тает.
+  // успевает полностью уехать за верх. Opacity отложен на последнюю
+  // четверть фазы — карточка успевает заметно уехать, прежде чем
+  // тает (раньше фейд начинался с середины и юзер ловил полу-
+  // прозрачные карточки посреди экрана).
   cards.forEach(card => {
     const attrEnd = card.getAttribute('data-end-y');
     // -1200px в 1440 = -83.33vw
@@ -95,8 +97,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tl.to(card, {
       opacity: 0,
-      duration: PHASE_2_DURATION * 0.5,
+      duration: PHASE_2_DURATION * 0.25,
       ease: "power1.in"
-    }, phase2Start + PHASE_2_DURATION * 0.5);
+    }, phase2Start + PHASE_2_DURATION * 0.75);
   });
 });
