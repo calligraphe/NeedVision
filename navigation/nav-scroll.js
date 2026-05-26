@@ -1,7 +1,7 @@
 /**
  * Навигация: сжатие плашки на скролле + клик-меню.
  *
- * На скролле плашка .menu_overlay-content сжимается 57vw → 29vw, белеет,
+ * На скролле плашка .menu_overlay-content сжимается 57vw → 24vw, белеет,
  * показывается profit-счётчик, лого опускается. Над .stages цвета
  * инвертируются. По клику .nav-menu — экстренно дожимает плашку (если
  * юзер у верха) и раскрывает .menu_dropdown-list.
@@ -79,7 +79,7 @@ function bootNavScroll() {
   }, 0);
 
   compressTl.to(".menu_overlay-content", {
-    width: "29vw",
+    width: "24vw",
     backgroundColor: "#ffffff",
     duration: 0.5,
     ease: "power2.out"
