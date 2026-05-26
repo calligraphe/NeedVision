@@ -82,7 +82,7 @@ function bootNavScroll() {
   // .nav-wrapper приподнимается вверх на 0.4vw синхронно с лого —
   // компенсирует визуальное смещение, плашка прилегает к верху.
   compressTl.to(".nav-wrapper", {
-    marginTop: "-0.5vw",
+    marginTop: "-0.47vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
