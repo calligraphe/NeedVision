@@ -77,9 +77,14 @@ document.addEventListener("DOMContentLoaded", () => {
     ease: "power3.inOut"
   });
 
+  // Точечный триггер: end ставим вплотную к start, чтобы зона была
+  // 1px. Без явного end дефолт = "bottom top" body → зона тянется
+  // до конца страницы и onLeaveBack срабатывал нестабильно (юзер
+  // ловил «текст возвращается только на самом верху»).
   ScrollTrigger.create({
     trigger: "body",
     start: () => "top top-=" + (window.innerHeight * 2.3),
+    end: "+=1",
     invalidateOnRefresh: true,
     onEnter: () => {
       console.log("[hero-exit] onEnter → play");
