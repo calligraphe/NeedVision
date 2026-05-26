@@ -118,13 +118,20 @@ function bootStagesAnimation() {
 
   // ---- Стартовое состояние ----
   // card[0] видна и текст на местах; остальные скрыты, текст внизу.
+  // Pagination'ы ведём отдельно: только у активной карточки visible —
+  // иначе при transition было видно одновременно 2 заполненных
+  // точки (своя у каждой карточки).
+  const cardPaginations = cards.map(c => c.querySelector(".stages_pagination"));
+
   cards.forEach((card, i) => {
     if (i === 0) {
       gsap.set(card, { autoAlpha: 1 });
       gsap.set(cardLines[i], { yPercent: 0, opacity: 1 });
+      if (cardPaginations[i]) gsap.set(cardPaginations[i], { autoAlpha: 1 });
     } else {
       gsap.set(card, { autoAlpha: 0 });
       gsap.set(cardLines[i], { yPercent: 100, opacity: 0 });
+      if (cardPaginations[i]) gsap.set(cardPaginations[i], { autoAlpha: 0 });
     }
   });
 
@@ -167,37 +174,59 @@ function bootStagesAnimation() {
     // или под текущей — обе абсолютно совмещены в одном слоте).
     tl.set(toCard, { autoAlpha: 1 }, 0);
 
-    // Старые строки уезжают (drum-out)
+    // Pagination: быстрый crossfade, чтобы не было кадра с двумя
+    // одновременно заполненными точками. Старая фейдится за 0.12s,
+    // новая поднимается следом — пользователь не успевает увидеть
+    // момент когда обе видны.
+    const fromPag = cardPaginations[fromIdx];
+    const toPag = cardPaginations[target];
+    if (fromPag) {
+      tl.to(fromPag, {
+        autoAlpha: 0,
+        duration: 0.12,
+        ease: "power2.in",
+        overwrite: "auto"
+      }, 0);
+    }
+    if (toPag) {
+      tl.fromTo(toPag,
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.18, ease: "power2.out", overwrite: "auto" },
+        0.1
+      );
+    }
+
+    // Старые строки уезжают (drum-out) — +30% к скорости (длительность)
     tl.to(fromLines, {
       yPercent: exitY,
       opacity: 0,
-      duration: 0.55,
-      stagger: { each: 0.035, from: "start" },
+      duration: 0.72,
+      stagger: { each: 0.045, from: "start" },
       ease: "power2.in",
       overwrite: "auto"
     }, 0);
 
-    // Новые строки приезжают (drum-in) с лёгким overlap
+    // Новые строки приезжают (drum-in) с лёгким overlap — +30% к скорости
     tl.fromTo(toLines,
       { yPercent: entryY, opacity: 0 },
       {
         yPercent: 0,
         opacity: 1,
-        duration: 0.7,
-        stagger: { each: 0.04, from: "start" },
+        duration: 0.91,
+        stagger: { each: 0.052, from: "start" },
         ease: "power2.out",
         overwrite: "auto"
       },
-      0.2
+      0.26
     );
 
     // Прячем старую карточку (вместе с её pagination/dots), когда
     // её строки уже ушли за маски — иначе мелькает чужая пагинация.
     tl.to(fromCard, {
       autoAlpha: 0,
-      duration: 0.25,
+      duration: 0.32,
       ease: "power2.in"
-    }, 0.5);
+    }, 0.65);
   }
 
 
