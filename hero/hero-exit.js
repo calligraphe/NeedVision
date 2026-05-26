@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   ScrollTrigger.create({
     trigger: "body",
-    start: () => "top top-=" + window.innerHeight,
+    start: () => "top top-=" + (window.innerHeight * 1.5),
     invalidateOnRefresh: true,
     onEnter: () => {
       console.log("[hero-exit] onEnter → play");
