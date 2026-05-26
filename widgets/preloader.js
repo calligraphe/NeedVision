@@ -37,13 +37,26 @@ function bootPreloader() {
     icon.style.willChange = "opacity";
   });
 
+  // Компенсируем ширину скроллбара через padding-right при lock,
+  // чтобы при снятии overflow:hidden сайт не дёргался: пока
+  // прелоудер виден, скроллбар скрыт, но место под него зарезервировано.
+  // Когда прелоудер уходит — скроллбар появляется ровно в этом месте,
+  // контент не сдвигается. scrollbar-gutter:stable в CSS этого не
+  // делает при overflow:hidden (по спеке гэп не резервируется).
+  function getScrollbarWidth() {
+    return window.innerWidth - document.documentElement.clientWidth;
+  }
+
   function lockUI() {
+    const sbw = getScrollbarWidth();
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    if (sbw > 0) document.body.style.paddingRight = `${sbw}px`;
   }
   function unlockUI() {
     document.documentElement.style.overflow = "";
     document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
   }
 
   function tick(now) {
