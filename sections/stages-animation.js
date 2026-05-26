@@ -1,19 +1,15 @@
 /**
- * Секция «Этапы». Hybrid: визуал секции привязан к скроллу,
- * смена этапов — автоплеем.
+ * Секция «Этапы». Hybrid:
+ *  — фон секции, картинки и parallax по-прежнему scrub (плавно по скроллу);
+ *  — смена этапов (барабан слов + лейбл) — autoplay через
+ *    state-machine. Раньше при медленном скролле scrub-таймлайн
+ *    «застревал» в середине барабана и показывал грязные
+ *    промежуточные кадры (полупрозрачные слова с тёмным blur).
+ *    Теперь каждое пересечение границы этапа триггерит автоплей
+ *    в нужную сторону, без половинчатых состояний.
  *
- * SCROLL-DRIVEN (scrub):
- *  — фон about + фонарик при входе в секцию;
- *  — картинки .stages_img: reveal + intra-section parallax.
- *
- * AUTOPLAY (по достижению scroll-порога — играется тайм-лайн целиком):
- *  — смена текстов через word-split + stagger + blur;
- *  — смена лейбла «ЭТАП N»;
- *  — переключение активной точки пагинации.
- *
- * Зачем автоплей: при scrub текст «дёргался» вслед за колесом и
- * выглядел suetlivo. Автоплей даёт уверенный, всегда одинаковый
- * переход за фикс. duration.
+ *  — blur убран из текстовой анимации (давал тёмный halo на
+ *    кремовом фоне). Барабан = yPercent + opacity, чисто.
  */
 
 function bootStagesAnimation() {
@@ -74,7 +70,6 @@ function bootStagesAnimation() {
       }
     });
 
-    // Parallax: чётные/нечётные на разной скорости — многоплановое движение
     const parallaxOffset = idx % 2 === 0 ? -60 : 60;
     gsap.to(img, {
       yPercent: parallaxOffset / 10,
@@ -121,25 +116,20 @@ function bootStagesAnimation() {
     });
   }
 
-  setActiveDot(0);
-
 
   // ---- Word split ----
-  // Каждый текст-блок разбиваем на <span class="stages_word">
-  // с display:inline-block. Слова станут независимыми единицами
-  // для stagger-анимации.
   function splitToWords(el) {
     if (el.dataset.splitDone === "1") return;
     const text = el.textContent;
     if (!text || !text.trim()) return;
 
     if (el.children.length > 0 && el.children.length !== el.querySelectorAll("br").length) {
-      return;        // нетривиальный HTML — не трогаем
+      return;
     }
 
     const words = text.trim().split(/\s+/);
     el.innerHTML = words
-      .map(w => `<span class="stages_word" style="display:inline-block;will-change:transform,filter,opacity">${w}</span>`)
+      .map(w => `<span class="stages_word" style="display:inline-block;will-change:transform,opacity">${w}</span>`)
       .join(" ");
     el.dataset.splitDone = "1";
   }
@@ -150,7 +140,7 @@ function bootStagesAnimation() {
   });
 
   if (stepLabel) {
-    stepLabel.style.willChange = "transform, filter, opacity";
+    stepLabel.style.willChange = "transform, opacity";
     stepLabel.style.backfaceVisibility = "hidden";
   }
 
@@ -159,95 +149,116 @@ function bootStagesAnimation() {
   wrappers.forEach((wrap, index) => {
     const words = wrap.querySelectorAll(".stages_word");
     if (index === 0) {
-      gsap.set(words, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
+      gsap.set(words, { yPercent: 0, opacity: 1 });
       gsap.set(wrap, { autoAlpha: 1 });
     } else {
-      gsap.set(words, { yPercent: 100, opacity: 0, filter: "blur(8px)" });
+      gsap.set(words, { yPercent: 100, opacity: 0 });
       gsap.set(wrap, { autoAlpha: 0 });
     }
   });
 
-  if (stepLabel) gsap.set(stepLabel, { yPercent: 0, opacity: 1, filter: "blur(0px)" });
+  if (stepLabel) gsap.set(stepLabel, { yPercent: 0, opacity: 1 });
+
+  setActiveDot(0);
 
 
-  // ---- Главный scrub-таймлайн смены этапов ----
-  // scrub 2.2 даёт плавную inertia-доводку. Stagger мелкий (0.018),
-  // ease power2 — мягче чем power3, без 'удара'.
-  const tlStages = gsap.timeline({
-    scrollTrigger: {
-      trigger: ".stages",
-      start: "top top",
-      end: "bottom bottom",
-      scrub: 2.2
-    }
-  });
+  // ---- State-machine: автоплей перехода между этапами ----
+  // currentStep — индекс видимого этапа. transitionTo вызывается
+  // из onUpdate когда scroll-progress пересекает границу.
+  // Direction (forward / back) определяет в какую сторону уезжают
+  // слова (вверх или вниз).
+  //
+  // Длительности подобраны под ощущение «такой же скорости» как
+  // у прежнего scrub:2.2 — exit ~0.55s, entry ~0.7s с лёгким overlap.
+  let currentStep = 0;
+  let activeTween = null;
 
-  wrappers.forEach((wrap, i) => {
-    if (i >= wrappers.length - 1) return;
+  function transitionTo(target) {
+    if (target === currentStep) return;
+    if (target < 0 || target >= wrappers.length) return;
 
-    const nextWrap = wrappers[i + 1];
-    const currentWords = wrap.querySelectorAll(".stages_word");
-    const nextWords = nextWrap.querySelectorAll(".stages_word");
+    const direction = target > currentStep ? 1 : -1;
+    const fromIdx = currentStep;
+    currentStep = target;
+    setActiveDot(target);
 
-    const stepName = `step_${i}`;
+    const fromWrap = wrappers[fromIdx];
+    const toWrap = wrappers[target];
+    const fromWords = fromWrap.querySelectorAll(".stages_word");
+    const toWords = toWrap.querySelectorAll(".stages_word");
 
-    tlStages.set(nextWrap, { autoAlpha: 1 }, stepName);
+    const exitY = direction > 0 ? -100 : 100;
+    const entryY = direction > 0 ? 100 : -100;
 
-    // Уход: слова уходят вверх с blur, мягкий power2.inOut
-    tlStages.to(currentWords, {
-      yPercent: -100,
+    if (activeTween) activeTween.kill();
+
+    const tl = gsap.timeline({
+      onComplete: () => { activeTween = null; }
+    });
+    activeTween = tl;
+
+    tl.set(toWrap, { autoAlpha: 1 }, 0);
+
+    // Текущие слова уходят
+    tl.to(fromWords, {
+      yPercent: exitY,
       opacity: 0,
-      filter: "blur(8px)",
-      duration: 1.1,
-      stagger: { each: 0.018, from: "start" },
-      ease: "power2.inOut"
-    }, stepName);
+      duration: 0.55,
+      stagger: { each: 0.014, from: "start" },
+      ease: "power2.in",
+      overwrite: "auto"
+    }, 0);
 
-    // Появление: новые приезжают снизу. +0.25 опережение — без зазора
-    tlStages.fromTo(nextWords,
-      { yPercent: 100, opacity: 0, filter: "blur(8px)" },
+    // Новые слова приезжают (со стороны direction)
+    tl.fromTo(toWords,
+      { yPercent: entryY, opacity: 0 },
       {
         yPercent: 0,
         opacity: 1,
-        filter: "blur(0px)",
-        duration: 1.3,
-        stagger: { each: 0.022, from: "start" },
-        ease: "power2.out"
+        duration: 0.7,
+        stagger: { each: 0.016, from: "start" },
+        ease: "power2.out",
+        overwrite: "auto"
       },
-      `${stepName}+=0.25`);
+      0.2
+    );
 
+    // Лейбл «ЭТАП N»: барабаном меняет цифру
     if (stepLabel) {
-      tlStages.to(stepLabel, {
-        yPercent: -100,
+      tl.to(stepLabel, {
+        yPercent: exitY,
         opacity: 0,
-        filter: "blur(4px)",
-        duration: 0.5,
-        ease: "power2.in"
-      }, stepName);
+        duration: 0.3,
+        ease: "power2.in",
+        overwrite: "auto"
+      }, 0);
 
-      tlStages.set(stepLabel, {
-        textContent: `ЭТАП ${i + 2}`,
-        yPercent: 100,
-        filter: "blur(4px)",
-        opacity: 0
-      }, `${stepName}+=0.5`);
+      tl.call(() => {
+        stepLabel.textContent = `ЭТАП ${target + 1}`;
+      }, [], 0.3);
 
-      tlStages.to(stepLabel, {
-        yPercent: 0,
-        opacity: 1,
-        filter: "blur(0px)",
-        duration: 0.6,
-        ease: "power2.out"
-      }, `${stepName}+=0.5`);
+      tl.fromTo(stepLabel,
+        { yPercent: entryY, opacity: 0 },
+        {
+          yPercent: 0,
+          opacity: 1,
+          duration: 0.4,
+          ease: "power2.out",
+          overwrite: "auto"
+        },
+        0.3
+      );
     }
 
-    tlStages.set(wrap, { autoAlpha: 0 });
-    tlStages.to({}, { duration: 0.5 });
-  });
+    // Старый wrapper в конце скрываем
+    tl.set(fromWrap, { autoAlpha: 0 });
+  }
 
 
-  // ---- Пагинация — отдельный onUpdate (мгновенно, не scrub-tween) ----
-  let lastDotIdx = 0;
+  // ---- ScrollTrigger: один монитор, маппит progress → step idx ----
+  // Границы между этапами равномерно разбивают scroll-диапазон секции
+  // (от "top top" до "bottom bottom"). При пересечении границы вверх
+  // или вниз — autoplay-таймлайн в нужном направлении.
   ScrollTrigger.create({
     trigger: ".stages",
     start: "top top",
@@ -257,12 +268,8 @@ function bootStagesAnimation() {
         Math.floor(self.progress * wrappers.length),
         wrappers.length - 1
       );
-      if (idx !== lastDotIdx) {
-        lastDotIdx = idx;
-        setActiveDot(idx);
-      }
-    },
-    onRefresh: () => setActiveDot(lastDotIdx)
+      transitionTo(idx);
+    }
   });
 }
 
