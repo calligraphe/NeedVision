@@ -30,6 +30,8 @@ function bootPreloader() {
   let lastFrameAt  = 0;
   let shownAt      = 0;
   let navigating   = false;
+  let unlockArmed  = false;   // когда true, ждём предпоследнюю иконку
+                              // в tick() чтобы тихо снять lock UI
 
   // Стартовое: первая видна, остальные прозрачны.
   icons.forEach((icon, i) => {
@@ -66,6 +68,15 @@ function bootPreloader() {
       icons[currentIdx].style.opacity = "0";
       currentIdx = (currentIdx + 1) % icons.length;
       icons[currentIdx].style.opacity = "1";
+
+      // Тихо снимаем lock на предпоследней иконке (8-й при 9 иконках).
+      // Прелоудер ещё на 100% opacity, контент за ним. Скроллбар
+      // появляется в зарезервированном padding-right месте — юзер
+      // не видит прыжок. К моменту fade всё уже устаканилось.
+      if (unlockArmed && currentIdx === icons.length - 2) {
+        unlockArmed = false;
+        unlockUI();
+      }
     }
     requestAnimationFrame(tick);
   }
@@ -109,15 +120,30 @@ function bootPreloader() {
     const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
 
     setTimeout(() => {
+      // Армируем unlock на 8-й иконке (за один кадр до финальной 9-й).
+      // Если currentIdx уже на 8 или дальше — снимаем lock прямо
+      // сейчас, чтобы не ждать полного цикла.
+      if (currentIdx >= icons.length - 2) {
+        unlockUI();
+      } else {
+        unlockArmed = true;
+      }
+
       waitForCycleEnd(() => {
         // Достигли 9-го лого. Стопаем цикл сразу — 9-е лого держится
         // на экране PAUSE_ON_LAST_MS, потом fade.
         stopCycle();
 
+        // На случай если по какой-то причине unlock ещё не сработал
+        // (currentIdx перескочил через 8) — гарантированно снимаем сейчас.
+        if (unlockArmed) {
+          unlockArmed = false;
+          unlockUI();
+        }
+
         setTimeout(() => {
           const onDone = () => {
             preloader.style.display = "none";
-            unlockUI();
           };
 
           if (typeof gsap !== "undefined") {
