@@ -111,11 +111,5 @@ document.addEventListener("DOMContentLoaded", () => {
       ease: "power2.in",
       force3D: true
     }, phase2Start);
-
-    tl.to(card, {
-      opacity: 0,
-      duration: PHASE_2_DURATION * 0.1,
-      ease: "power1.in"
-    }, phase2Start + PHASE_2_DURATION * 0.9);
   });
 });
