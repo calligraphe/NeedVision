@@ -32,8 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Длительности в условных единицах timeline (это пропорции внутри
   // одного scroll-distance, не секунды).
   const PHASE_1_DURATION = 5;
-  const PAUSE_DURATION = 1.56;       // +20% к 1.3 (изначально 1)
-  const PHASE_2_DURATION = 7.8;      // +20% к 6.5 (изначально 5)
+  const PAUSE_DURATION = 3.12;       // ×2 от 1.56 (исходно 1)
+  const PHASE_2_DURATION = 15.6;     // ×2 от 7.8 (исходно 5)
 
   // start: "top bottom" — анимация начинается как только секция
   // показалась снизу.
@@ -72,6 +72,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   tl.to({}, { duration: PAUSE_DURATION });
+
+  // На фазе 2 контейнеры (grid и columns) тоже едут вверх через
+  // marginTop — чтобы общее движение карточек выглядело заметнее.
+  // Grid -3vw, columns -5vw: разная скорость = лёгкий параллакс.
+  const phase2BaseStart = PHASE_1_DURATION + PAUSE_DURATION;
+
+  tl.to(".bento_grid", {
+    marginTop: "-3vw",
+    duration: PHASE_2_DURATION,
+    ease: "power2.in"
+  }, phase2BaseStart);
+
+  tl.to(".bento_column", {
+    marginTop: "-5vw",
+    duration: PHASE_2_DURATION,
+    ease: "power2.in"
+  }, phase2BaseStart);
 
   // Фаза 2 — уход. Дефолтный endY -1200: карточка ~800px высотой
   // успевает полностью уехать за верх. Opacity отложен на последнюю
