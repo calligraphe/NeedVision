@@ -32,8 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Длительности в условных единицах timeline (это пропорции внутри
   // одного scroll-distance, не секунды).
   const PHASE_1_DURATION = 5;
-  const PAUSE_DURATION = 3.12;       // ×2 от 1.56 (исходно 1)
-  const PHASE_2_DURATION = 15.6;     // ×2 от 7.8 (исходно 5)
+  const PAUSE_DURATION = 4.06;       // +30% к 3.12
+  const PHASE_2_DURATION = 20.28;    // +30% к 15.6
 
   // start: "top bottom" — анимация начинается как только секция
   // показалась снизу.
