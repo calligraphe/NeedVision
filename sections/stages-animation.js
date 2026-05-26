@@ -1,15 +1,22 @@
 /**
- * Секция «Этапы». Hybrid:
- *  — фон секции, картинки и parallax по-прежнему scrub (плавно по скроллу);
- *  — смена этапов (барабан слов + лейбл) — autoplay через
- *    state-machine. Раньше при медленном скролле scrub-таймлайн
- *    «застревал» в середине барабана и показывал грязные
- *    промежуточные кадры (полупрозрачные слова с тёмным blur).
- *    Теперь каждое пересечение границы этапа триггерит автоплей
- *    в нужную сторону, без половинчатых состояний.
+ * Секция «Этапы» — переписана под новую вёрстку.
  *
- *  — blur убран из текстовой анимации (давал тёмный halo на
- *    кремовом фоне). Барабан = yPercent + opacity, чисто.
+ * Старая разметка: один общий .stages_text-wrapper + единый
+ * step-label + пагинация, всё менялось через JS (textContent,
+ * dot opacity).
+ *
+ * Новая разметка: 2× .stages_content-column, в каждой sticky-
+ * wrapper .stages_content-wrapper с уже готовым меню (свой
+ * step-label «этап N», своя pagination с активной точкой).
+ * Wrapper'ы стартуют opacity:0 (CSS), .active = opacity 1.
+ *
+ * Логика анимации:
+ *  — wrapper 1 active при входе в секцию;
+ *  — при пересечении границы колонок: текущий wrapper выезжает
+ *    барабаном (title-mask, subtitle-mask, p-mask — они уже
+ *    overflow:hidden в CSS), новый wrapper въезжает с противо-
+ *    положной стороны;
+ *  — пагинацию/лейбл больше НЕ трогаем (в HTML уже готовые).
  */
 
 function bootStagesAnimation() {
@@ -84,108 +91,50 @@ function bootStagesAnimation() {
   });
 
 
-  // ---- Тексты, пагинация, лейбл ----
-  const wrappers = gsap.utils.toArray(".stages_text-wrapper");
-  const dots = gsap.utils.toArray(".stages_dot");
-  const stepLabel = document.querySelector(".stages_step-label");
-  const stagesPagination = document.querySelector(".stages_pagination");
-
+  // ---- Wrapper'ы и их текстовые части ----
+  const wrappers = gsap.utils.toArray(".stages_content-wrapper");
+  const columns = gsap.utils.toArray(".stages_content-column");
   if (wrappers.length === 0) return;
 
-
-  // ---- Пагинация (прямой opacity с !important — IX2-proof) ----
-  // Webflow IX2 биндит data-w-id и оставляет inline transform/opacity
-  // как остаток от своих interactions. Стрипаем рекурсивно по всему
-  // дереву .stages_pagination, плюс чистим residual inline-styles.
-  const dotInners = [];
-
-  if (stagesPagination) {
-    stagesPagination.querySelectorAll("[data-w-id]").forEach(el => el.removeAttribute("data-w-id"));
-    stagesPagination.removeAttribute("data-w-id");
-    stagesPagination.style.setProperty("opacity", "1", "important");
+  // Берём ВСЕ элементы внутри masks — каждая строка (.stages_title,
+  // .stages_subtitle, .stages_p-text) уже сидит в своей overflow:hidden
+  // обёртке. Анимируем yPercent + opacity.
+  function getTextParts(wrap) {
+    return gsap.utils.toArray(wrap.querySelectorAll(
+      ".stages_title-mask > .stages_title, " +
+      ".stages_subtitle-mask > .stages_subtitle, " +
+      ".stages_p-mask > .stages_p-text"
+    ));
   }
 
-  dots.forEach((dot) => {
-    const full = dot.querySelector(".stages_dot-full");
-    const empty = dot.querySelector(".stages_dot-empty");
-    [dot, full, empty].forEach(el => {
-      if (!el) return;
-      // Сносим Webflow-residual transform — может ломать видимость
-      el.style.removeProperty("transform");
-      el.style.setProperty("transition", "opacity 0.35s ease", "important");
-    });
-    dotInners.push({ full, empty });
+  const wrapperTexts = wrappers.map(getTextParts);
+
+
+  // Webflow IX2 биндит data-w-id и может перезаписывать opacity —
+  // стрипаем по всему дереву wrappers'ов.
+  wrappers.forEach(wrap => {
+    wrap.removeAttribute("data-w-id");
+    wrap.querySelectorAll("[data-w-id]").forEach(el => el.removeAttribute("data-w-id"));
   });
-
-  function setActiveDot(index) {
-    dotInners.forEach(({ full, empty }, i) => {
-      const isActive = i === index;
-      if (full)  full.style.setProperty("opacity", isActive ? "1" : "0", "important");
-      if (empty) empty.style.setProperty("opacity", isActive ? "0" : "1", "important");
-    });
-  }
-
-  // Повторно применяем через паузы — Webflow IX2 может перезаписать
-  // opacity спустя ~50-200ms после нашего init (его собственный pageload tween).
-  function reapplyActiveDot() { setActiveDot(currentStep); }
-  setTimeout(reapplyActiveDot, 100);
-  setTimeout(reapplyActiveDot, 500);
-  setTimeout(reapplyActiveDot, 1500);
-
-
-  // ---- Word split ----
-  function splitToWords(el) {
-    if (el.dataset.splitDone === "1") return;
-    const text = el.textContent;
-    if (!text || !text.trim()) return;
-
-    if (el.children.length > 0 && el.children.length !== el.querySelectorAll("br").length) {
-      return;
-    }
-
-    const words = text.trim().split(/\s+/);
-    el.innerHTML = words
-      .map(w => `<span class="stages_word" style="display:inline-block;will-change:transform,opacity">${w}</span>`)
-      .join(" ");
-    el.dataset.splitDone = "1";
-  }
-
-  wrappers.forEach((wrap) => {
-    wrap.querySelectorAll(".stages_title, .stages_subtitle, .stages_p-text")
-      .forEach(splitToWords);
-  });
-
-  if (stepLabel) {
-    stepLabel.style.willChange = "transform, opacity";
-    stepLabel.style.backfaceVisibility = "hidden";
-  }
 
 
   // ---- Стартовое состояние ----
-  wrappers.forEach((wrap, index) => {
-    const words = wrap.querySelectorAll(".stages_word");
-    if (index === 0) {
-      gsap.set(words, { yPercent: 0, opacity: 1 });
+  // wrapper[0] активен (opacity 1, текст на местах);
+  // остальные скрыты, их текст на стартовой позиции снизу.
+  wrappers.forEach((wrap, i) => {
+    if (i === 0) {
       gsap.set(wrap, { autoAlpha: 1 });
+      gsap.set(wrapperTexts[i], { yPercent: 0, opacity: 1 });
+      wrap.classList.add("active");
     } else {
-      gsap.set(words, { yPercent: 100, opacity: 0 });
       gsap.set(wrap, { autoAlpha: 0 });
+      gsap.set(wrapperTexts[i], { yPercent: 100, opacity: 0 });
+      wrap.classList.remove("active");
     }
   });
 
-  if (stepLabel) gsap.set(stepLabel, { yPercent: 0, opacity: 1 });
 
-  setActiveDot(0);
-
-
-  // ---- State-machine: автоплей перехода между этапами ----
-  // currentStep — индекс видимого этапа. transitionTo вызывается
-  // из onUpdate когда scroll-progress пересекает границу.
-  // Direction (forward / back) определяет в какую сторону уезжают
-  // слова (вверх или вниз).
-  //
-  // Длительности подобраны под ощущение «такой же скорости» как
-  // у прежнего scrub:2.2 — exit ~0.55s, entry ~0.7s с лёгким overlap.
+  // ---- State-machine ----
   let currentStep = 0;
   let activeTween = null;
 
@@ -196,23 +145,21 @@ function bootStagesAnimation() {
     const direction = target > currentStep ? 1 : -1;
     const fromIdx = currentStep;
     currentStep = target;
-    setActiveDot(target);
 
     if (activeTween) activeTween.kill();
 
-    // Очистка orphan-wrappers: если прошлый переход был убит до своего
-    // финального tl.set(fromWrap, autoAlpha:0) — этот wrapper остался
-    // видимым и накладывался поверх новых. Жёстко прячем всех кроме
-    // fromIdx и target.
+    // Очистка orphan-wrappers: при быстром скролле через несколько
+    // границ прошлый transitionTo мог не успеть скрыть свой fromWrap.
     wrappers.forEach((wrap, i) => {
       if (i === fromIdx || i === target) return;
       gsap.set(wrap, { autoAlpha: 0 });
+      wrap.classList.remove("active");
     });
 
     const fromWrap = wrappers[fromIdx];
     const toWrap = wrappers[target];
-    const fromWords = fromWrap.querySelectorAll(".stages_word");
-    const toWords = toWrap.querySelectorAll(".stages_word");
+    const fromText = wrapperTexts[fromIdx];
+    const toText = wrapperTexts[target];
 
     const exitY = direction > 0 ? -100 : 100;
     const entryY = direction > 0 ? 100 : -100;
@@ -223,78 +170,50 @@ function bootStagesAnimation() {
     activeTween = tl;
 
     tl.set(toWrap, { autoAlpha: 1 }, 0);
+    toWrap.classList.add("active");
+    fromWrap.classList.remove("active");
 
-    // Текущие слова уходят
-    tl.to(fromWords, {
+    // Текущие строки уходят
+    tl.to(fromText, {
       yPercent: exitY,
       opacity: 0,
       duration: 0.55,
-      stagger: { each: 0.014, from: "start" },
+      stagger: { each: 0.04, from: "start" },
       ease: "power2.in",
       overwrite: "auto"
     }, 0);
 
-    // Новые слова приезжают (со стороны direction)
-    tl.fromTo(toWords,
+    // Новые строки приезжают
+    tl.fromTo(toText,
       { yPercent: entryY, opacity: 0 },
       {
         yPercent: 0,
         opacity: 1,
         duration: 0.7,
-        stagger: { each: 0.016, from: "start" },
+        stagger: { each: 0.045, from: "start" },
         ease: "power2.out",
         overwrite: "auto"
       },
       0.2
     );
 
-    // Лейбл «ЭТАП N»: барабаном меняет цифру
-    if (stepLabel) {
-      tl.to(stepLabel, {
-        yPercent: exitY,
-        opacity: 0,
-        duration: 0.3,
-        ease: "power2.in",
-        overwrite: "auto"
-      }, 0);
-
-      tl.call(() => {
-        stepLabel.textContent = `ЭТАП ${target + 1}`;
-      }, [], 0.3);
-
-      tl.fromTo(stepLabel,
-        { yPercent: entryY, opacity: 0 },
-        {
-          yPercent: 0,
-          opacity: 1,
-          duration: 0.4,
-          ease: "power2.out",
-          overwrite: "auto"
-        },
-        0.3
-      );
-    }
-
     // Старый wrapper в конце скрываем
     tl.set(fromWrap, { autoAlpha: 0 });
   }
 
 
-  // ---- ScrollTrigger: один монитор, маппит progress → step idx ----
-  // Границы между этапами равномерно разбивают scroll-диапазон секции
-  // (от "top top" до "bottom bottom"). При пересечении границы вверх
-  // или вниз — autoplay-таймлайн в нужном направлении.
-  ScrollTrigger.create({
-    trigger: ".stages",
-    start: "top top",
-    end: "bottom bottom",
-    onUpdate: (self) => {
-      const idx = Math.min(
-        Math.floor(self.progress * wrappers.length),
-        wrappers.length - 1
-      );
-      transitionTo(idx);
-    }
+  // ---- ScrollTriggers по колонкам ----
+  // Каждая колонка кроме первой получает свой триггер: когда её верх
+  // приходит к viewport center — это «момент сцепки» с предыдущим
+  // sticky-wrapper'ом, на котором делаем drum-переход.
+  columns.forEach((col, i) => {
+    if (i === 0) return;
+    ScrollTrigger.create({
+      trigger: col,
+      start: "top center",
+      onEnter: () => transitionTo(i),
+      onLeaveBack: () => transitionTo(i - 1)
+    });
   });
 }
 
