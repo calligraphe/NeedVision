@@ -76,12 +76,6 @@ function bootNavScroll() {
     ease: "power2.out"
   }, 0);
 
-  compressTl.to(".nav-btm", {
-    marginTop: "0.55vw",
-    duration: 0.35,
-    ease: "power2.out"
-  }, 0);
-
   compressTl.to(".menu_overlay-content", {
     width: "29vw",
     backgroundColor: "#ffffff",
