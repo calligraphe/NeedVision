@@ -71,7 +71,7 @@ function bootNavScroll() {
   // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
   compressTl.to(".nav-logo_img", {
     width: "54%",
-    y: "4vw",
+    y: "2vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
