@@ -74,8 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     y: "-13.89vw",
     opacity: 0,
     duration: 2.4,
-    ease: "power3.inOut",
-    stagger: 0.45
+    ease: "power3.inOut"
   });
 
   ScrollTrigger.create({
