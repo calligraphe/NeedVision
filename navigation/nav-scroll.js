@@ -67,11 +67,13 @@ function bootNavScroll() {
   const compressTl = gsap.timeline({ paused: true });
   const TOP_DELAY = 0.09;
 
-  // top → y (translateY): composite, без layout reflow.
-  // CSS top:0vw остаётся → итоговая позиция = 0 + translateY(4vw)
+  // Размер через scale (а не width) — composite, не триггерит reflow
+  // и не пересобирает <img> srcset. transformOrigin left center чтобы
+  // логотип ужимался от левого края.
+  gsap.set(".nav-logo_img", { transformOrigin: "left center", force3D: true });
   compressTl.to(".nav-logo_img", {
-    width: "54%",
-    y: "2vw",
+    scale: 0.54,
+    y: "3vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
