@@ -91,22 +91,6 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
-  compressTl.to(".menu_profit-badge", {
-    width: "auto",
-    opacity: 1,
-    margin: "0 0.5vw",
-    duration: 0.5,
-    ease: "power2.out"
-  }, TOP_DELAY);
-
-  compressTl.to(".nav-profit-item", {
-    opacity: 1,
-    y: 0,
-    duration: 0.8,
-    stagger: 0.1,
-    ease: "power2.out"
-  }, TOP_DELAY);
-
   compressTl.to(".nav-icon", {
     filter: "invert(1)",
     duration: 0.4,
@@ -123,6 +107,45 @@ function bootNavScroll() {
   // mobile (≤991px) → autoplay compressTl при загрузке, без scrub.
   // desktop → scroll-driven scrub.
   const isStaticNav = document.body?.dataset?.navMode === "static";
+
+  // ---- Autoplay для profit-badge / profit-item ----
+  // Раньше эти два тween'а сидели внутри compressTl и плавно
+  // проявлялись по мере scrub-сжатия (выглядело размазано на
+  // протяжении 300vw скролла). Теперь — отдельный paused-таймлайн,
+  // который запускается когда compressTl уже почти дожат (>=90%
+  // progress). Возврат — когда progress падает ниже порога.
+  // Триггер привязан к compressTl, поэтому работает одинаково и
+  // на scroll-scrub (desktop), и на triggered play (mobile), и
+  // на forced-progress в openMenu/closeMenu.
+  const profitTl = gsap.timeline({ paused: true });
+  profitTl.to(".menu_profit-badge", {
+    width: "auto",
+    opacity: 1,
+    margin: "0 0.5vw",
+    duration: 0.6,
+    ease: "power2.out"
+  }, 0);
+  profitTl.to(".nav-profit-item", {
+    opacity: 1,
+    y: 0,
+    duration: 0.7,
+    stagger: 0.1,
+    ease: "power2.out"
+  }, 0.1);
+
+  const PROFIT_THRESHOLD = 0.9;
+  let profitShown = false;
+  compressTl.eventCallback("onUpdate", () => {
+    const p = compressTl.progress();
+    if (p >= PROFIT_THRESHOLD && !profitShown) {
+      profitShown = true;
+      profitTl.play();
+    } else if (p < PROFIT_THRESHOLD && profitShown) {
+      profitShown = false;
+      profitTl.reverse();
+    }
+  });
+
 
   // ---- Autoplay-фейд для иконок/таймера ----
   // Отдельный таймлайн: при первом скролле вниз — opacity 1 → 0
