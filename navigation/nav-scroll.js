@@ -72,8 +72,9 @@ function bootNavScroll() {
   // логотип ужимался от левого края.
   gsap.set(".nav-logo_img", { transformOrigin: "left center", force3D: true });
   compressTl.to(".nav-logo_img", {
-    scale: 0.54,
+    scale: 0.5,
     y: "2vw",
+    marginLeft: "1vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
