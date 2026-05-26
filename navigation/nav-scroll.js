@@ -117,15 +117,9 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
-  // Иконки/таймер уходят в opacity + height одновременно за первые
-  // ~100px скролла. Высота тоже схлопывается, чтобы .nav_bar не
-  // оставлял пустой отступ
-  compressTl.to(".nav_left-icon, .nav_right-icon, .nav-timer", {
-    opacity: 0,
-    height: 0,
-    duration: 0.15,
-    ease: "power2.out"
-  }, 0);
+  // Иконки/таймер исчезают/появляются отдельным autoplay-фейдом —
+  // не привязаны к скроллу и без ресайза (только opacity). Триггер
+  // ниже — ScrollTrigger.onEnter/onLeaveBack.
 
 
   // ---- Режим: scroll-driven, static или mobile-autoplay ----
@@ -133,6 +127,26 @@ function bootNavScroll() {
   // mobile (≤991px) → autoplay compressTl при загрузке, без scrub.
   // desktop → scroll-driven scrub.
   const isStaticNav = document.body?.dataset?.navMode === "static";
+
+  // ---- Autoplay-фейд для иконок/таймера ----
+  // Отдельный таймлайн: при первом скролле вниз — opacity 1 → 0
+  // плавно за 0.5с, при возврате к верху — обратно. Без ресайза,
+  // только opacity. Запускается автоматом, не привязан к scrub.
+  const navFadeEls = ".nav_left-icon, .nav_right-icon, .nav-timer";
+  const navFadeTl = gsap.timeline({ paused: true });
+  navFadeTl.to(navFadeEls, {
+    opacity: 0,
+    duration: 0.5,
+    ease: "power2.out"
+  });
+
+  ScrollTrigger.create({
+    trigger: "body",
+    start: "top top-=20",
+    onEnter: () => navFadeTl.play(),
+    onLeaveBack: () => navFadeTl.reverse()
+  });
+
 
   // compressState.progress — куда вернуть плашку при закрытии меню.
   // Static: всегда 1. Desktop scrub / mobile triggered: 0 на init,
