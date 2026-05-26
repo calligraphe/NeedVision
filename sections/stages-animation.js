@@ -1,22 +1,20 @@
 /**
- * Секция «Этапы» — переписана под новую вёрстку.
+ * Секция «Этапы» — новая вёрстка с двумя стаканными карточками.
  *
- * Старая разметка: один общий .stages_text-wrapper + единый
- * step-label + пагинация, всё менялось через JS (textContent,
- * dot opacity).
+ * Структура:
+ *   .stages_content-wrapper (sticky top:14vw)
+ *     ├─ .stages_card._1   (position:static, opacity:1)
+ *     └─ .stages_card._2   (position:absolute top:0, opacity:0)
  *
- * Новая разметка: 2× .stages_content-column, в каждой sticky-
- * wrapper .stages_content-wrapper с уже готовым меню (свой
- * step-label «этап N», своя pagination с активной точкой).
- * Wrapper'ы стартуют opacity:0 (CSS), .active = opacity 1.
- *
- * Логика анимации:
- *  — wrapper 1 active при входе в секцию;
- *  — при пересечении границы колонок: текущий wrapper выезжает
- *    барабаном (title-mask, subtitle-mask, p-mask — они уже
- *    overflow:hidden в CSS), новый wrapper въезжает с противо-
- *    положной стороны;
- *  — пагинацию/лейбл больше НЕ трогаем (в HTML уже готовые).
+ * Карточки лежат друг на друге — card._1 держит размер, card._2
+ * absolute поверх неё. Меняем какой видим через autoAlpha и
+ * параллельно делаем барабан текста внутри:
+ *   .stages_step-label-mask > .stages_step-label
+ *   .stages_title-mask > .stages_title
+ *   .stages_subtitle-mask > .stages_subtitle
+ *   .stages_p-mask > .stages_p-text
+ * Все *-mask элементы уже overflow:hidden в CSS, поэтому
+ * yPercent ±100 даёт чистый drum-эффект.
  */
 
 function bootStagesAnimation() {
@@ -35,7 +33,7 @@ function bootStagesAnimation() {
   gsap.registerPlugin(ScrollTrigger);
 
 
-  // ---- Фон секции + фонарик на входе (scrub) ----
+  // ---- Фон секции + фонарик (scrub) ----
   const bgChangeTl = gsap.timeline({
     scrollTrigger: {
       trigger: ".stages",
@@ -91,45 +89,42 @@ function bootStagesAnimation() {
   });
 
 
-  // ---- Wrapper'ы и их текстовые части ----
-  const wrappers = gsap.utils.toArray(".stages_content-wrapper");
-  const columns = gsap.utils.toArray(".stages_content-column");
-  if (wrappers.length === 0) return;
+  // ---- Карточки и их анимируемые строки ----
+  const cards = gsap.utils.toArray(".stages_card");
+  if (cards.length === 0) return;
 
-  // Берём ВСЕ элементы внутри masks — каждая строка (.stages_title,
-  // .stages_subtitle, .stages_p-text) уже сидит в своей overflow:hidden
-  // обёртке. Анимируем yPercent + opacity.
-  function getTextParts(wrap) {
-    return gsap.utils.toArray(wrap.querySelectorAll(
+  // Строки, которые сидят внутри overflow:hidden масок.
+  // step-label-mask, title-mask, subtitle-mask, p-mask — все
+  // подготовлены в HTML; анимируем непосредственное содержимое.
+  function getTextLines(card) {
+    return gsap.utils.toArray(card.querySelectorAll(
+      ".stages_step-label-mask > .stages_step-label, " +
       ".stages_title-mask > .stages_title, " +
       ".stages_subtitle-mask > .stages_subtitle, " +
       ".stages_p-mask > .stages_p-text"
     ));
   }
 
-  const wrapperTexts = wrappers.map(getTextParts);
+  const cardLines = cards.map(getTextLines);
 
 
   // Webflow IX2 биндит data-w-id и может перезаписывать opacity —
-  // стрипаем по всему дереву wrappers'ов.
-  wrappers.forEach(wrap => {
-    wrap.removeAttribute("data-w-id");
-    wrap.querySelectorAll("[data-w-id]").forEach(el => el.removeAttribute("data-w-id"));
+  // стрипаем по всему дереву карточек.
+  cards.forEach(card => {
+    card.removeAttribute("data-w-id");
+    card.querySelectorAll("[data-w-id]").forEach(el => el.removeAttribute("data-w-id"));
   });
 
 
   // ---- Стартовое состояние ----
-  // wrapper[0] активен (opacity 1, текст на местах);
-  // остальные скрыты, их текст на стартовой позиции снизу.
-  wrappers.forEach((wrap, i) => {
+  // card[0] видна и текст на местах; остальные скрыты, текст внизу.
+  cards.forEach((card, i) => {
     if (i === 0) {
-      gsap.set(wrap, { autoAlpha: 1 });
-      gsap.set(wrapperTexts[i], { yPercent: 0, opacity: 1 });
-      wrap.classList.add("active");
+      gsap.set(card, { autoAlpha: 1 });
+      gsap.set(cardLines[i], { yPercent: 0, opacity: 1 });
     } else {
-      gsap.set(wrap, { autoAlpha: 0 });
-      gsap.set(wrapperTexts[i], { yPercent: 100, opacity: 0 });
-      wrap.classList.remove("active");
+      gsap.set(card, { autoAlpha: 0 });
+      gsap.set(cardLines[i], { yPercent: 100, opacity: 0 });
     }
   });
 
@@ -140,7 +135,7 @@ function bootStagesAnimation() {
 
   function transitionTo(target) {
     if (target === currentStep) return;
-    if (target < 0 || target >= wrappers.length) return;
+    if (target < 0 || target >= cards.length) return;
 
     const direction = target > currentStep ? 1 : -1;
     const fromIdx = currentStep;
@@ -148,18 +143,17 @@ function bootStagesAnimation() {
 
     if (activeTween) activeTween.kill();
 
-    // Очистка orphan-wrappers: при быстром скролле через несколько
-    // границ прошлый transitionTo мог не успеть скрыть свой fromWrap.
-    wrappers.forEach((wrap, i) => {
+    // Чистим orphan'ы на случай быстрого скролла через несколько
+    // границ — прошлый transitionTo мог не успеть скрыть свой fromCard.
+    cards.forEach((card, i) => {
       if (i === fromIdx || i === target) return;
-      gsap.set(wrap, { autoAlpha: 0 });
-      wrap.classList.remove("active");
+      gsap.set(card, { autoAlpha: 0 });
     });
 
-    const fromWrap = wrappers[fromIdx];
-    const toWrap = wrappers[target];
-    const fromText = wrapperTexts[fromIdx];
-    const toText = wrapperTexts[target];
+    const fromCard = cards[fromIdx];
+    const toCard = cards[target];
+    const fromLines = cardLines[fromIdx];
+    const toLines = cardLines[target];
 
     const exitY = direction > 0 ? -100 : 100;
     const entryY = direction > 0 ? 100 : -100;
@@ -169,51 +163,58 @@ function bootStagesAnimation() {
     });
     activeTween = tl;
 
-    tl.set(toWrap, { autoAlpha: 1 }, 0);
-    toWrap.classList.add("active");
-    fromWrap.classList.remove("active");
+    // Показываем целевую карточку сразу (она появляется поверх
+    // или под текущей — обе абсолютно совмещены в одном слоте).
+    tl.set(toCard, { autoAlpha: 1 }, 0);
 
-    // Текущие строки уходят
-    tl.to(fromText, {
+    // Старые строки уезжают (drum-out)
+    tl.to(fromLines, {
       yPercent: exitY,
       opacity: 0,
       duration: 0.55,
-      stagger: { each: 0.04, from: "start" },
+      stagger: { each: 0.035, from: "start" },
       ease: "power2.in",
       overwrite: "auto"
     }, 0);
 
-    // Новые строки приезжают
-    tl.fromTo(toText,
+    // Новые строки приезжают (drum-in) с лёгким overlap
+    tl.fromTo(toLines,
       { yPercent: entryY, opacity: 0 },
       {
         yPercent: 0,
         opacity: 1,
         duration: 0.7,
-        stagger: { each: 0.045, from: "start" },
+        stagger: { each: 0.04, from: "start" },
         ease: "power2.out",
         overwrite: "auto"
       },
       0.2
     );
 
-    // Старый wrapper в конце скрываем
-    tl.set(fromWrap, { autoAlpha: 0 });
+    // Прячем старую карточку (вместе с её pagination/dots), когда
+    // её строки уже ушли за маски — иначе мелькает чужая пагинация.
+    tl.to(fromCard, {
+      autoAlpha: 0,
+      duration: 0.25,
+      ease: "power2.in"
+    }, 0.5);
   }
 
 
-  // ---- ScrollTriggers по колонкам ----
-  // Каждая колонка кроме первой получает свой триггер: когда её верх
-  // приходит к viewport center — это «момент сцепки» с предыдущим
-  // sticky-wrapper'ом, на котором делаем drum-переход.
-  columns.forEach((col, i) => {
-    if (i === 0) return;
-    ScrollTrigger.create({
-      trigger: col,
-      start: "top center",
-      onEnter: () => transitionTo(i),
-      onLeaveBack: () => transitionTo(i - 1)
-    });
+  // ---- ScrollTrigger: маппинг scroll-progress → индекс карточки ----
+  // Равномерное разбиение всего scroll-диапазона секции (от
+  // "top top" до "bottom bottom") по количеству карточек.
+  ScrollTrigger.create({
+    trigger: ".stages",
+    start: "top top",
+    end: "bottom bottom",
+    onUpdate: (self) => {
+      const idx = Math.min(
+        Math.floor(self.progress * cards.length),
+        cards.length - 1
+      );
+      transitionTo(idx);
+    }
   });
 }
 
