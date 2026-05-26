@@ -79,13 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const phase2BaseStart = PHASE_1_DURATION + PAUSE_DURATION;
 
   tl.to(".bento_grid", {
-    marginTop: "-3vw",
+    marginTop: "-18vw",
     duration: PHASE_2_DURATION,
     ease: "power2.in"
   }, phase2BaseStart);
 
   tl.to(".bento_column", {
-    marginTop: "-5vw",
+    marginTop: "-15vw",
     duration: PHASE_2_DURATION,
     ease: "power2.in"
   }, phase2BaseStart);
