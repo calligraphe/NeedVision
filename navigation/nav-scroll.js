@@ -295,6 +295,14 @@ function bootNavScroll() {
       menuOpen = true;
       if (menuTl) menuTl.kill();
 
+      // Блокируем скролл сайта пока меню открыто. Lenis даёт нативный
+      // stop()/start(); overflow:hidden на html — фоллбек для случая
+      // когда Lenis не загрузился (или используется внешний инстанс).
+      // Scrollbar мы скрываем через CSS, так что overflow:hidden не
+      // вызовет визуального сдвига контента.
+      window.lenis?.stop();
+      document.documentElement.style.overflow = "hidden";
+
       // Если меню открывают над .stages — перебиваем navInvertTl на light
       if (isInInvertZone()) applyInvertState(INVERT_LIGHT);
 
@@ -368,6 +376,13 @@ function bootNavScroll() {
       // в режиме «всегда закрываюсь».
       menuOpen = false;
       if (menuTl) menuTl.kill();
+
+      // Возвращаем скролл сразу — не дожидаясь конца анимации схлопывания.
+      // Если юзер хочет скроллить — он это сразу делает, дропдаун доезжает
+      // под ним. Восстанавливаем именно в начале, чтобы случай быстрого
+      // open→close не оставил сайт в залоченном состоянии.
+      window.lenis?.start();
+      document.documentElement.style.overflow = "";
 
       // Если всё ещё в зоне инверсии — вернуть плашку в dark
       if (isInInvertZone()) applyInvertState(INVERT_DARK);
