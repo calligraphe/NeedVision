@@ -279,6 +279,43 @@ function bootNavScroll() {
     return !!navInvertTl?.scrollTrigger && navInvertTl.scrollTrigger.progress > 0.5;
   }
 
+
+  // ---- Блокировка скролла при открытом меню ----
+  // Только через Lenis API. lenis.stop() добавляет класс .lenis-stopped
+  // на <html>, по которому в custom.css стоит overflow:hidden — нативный
+  // скролл встаёт, инерционный тоже. lenis.start() корректно его снимает.
+  //
+  // Inline-style на html (document.documentElement.style.overflow) НЕ трогаем:
+  // прошлая попытка комбинировать его с lenis.stop() приводила к тому, что
+  // после первого open/close сайт переставал скроллиться вообще —
+  // видимо из-за того, что Lenis при start() ожидает определённое
+  // overflow-состояние, а inline-style перебивал его CSS-правило.
+  //
+  // Если Lenis не загрузился (window.lenis === undefined) — fallback
+  // через класс .is-scroll-locked на body, к которому в custom.css привязано
+  // overflow:hidden. На сайтах со встроенным Lenis (наш случай) ветка
+  // практически не задействуется, но оставляет страховку для edge-cases.
+  let scrollLocked = false;
+  function lockScroll() {
+    if (scrollLocked) return;
+    scrollLocked = true;
+    if (window.lenis?.stop) {
+      window.lenis.stop();
+    } else {
+      document.body.classList.add("is-scroll-locked");
+    }
+  }
+  function unlockScroll() {
+    if (!scrollLocked) return;
+    scrollLocked = false;
+    if (window.lenis?.start) {
+      window.lenis.start();
+    } else {
+      document.body.classList.remove("is-scroll-locked");
+    }
+  }
+
+
   // ---- Меню (открытие/закрытие) ----
   const menuBtn = document.querySelector(".nav-menu");
   const menuPanel = document.querySelector(".menu_dropdown-list");
@@ -294,6 +331,7 @@ function bootNavScroll() {
     function openMenu() {
       menuOpen = true;
       if (menuTl) menuTl.kill();
+      lockScroll();
 
       // Если меню открывают над .stages — перебиваем navInvertTl на light
       if (isInInvertZone()) applyInvertState(INVERT_LIGHT);
@@ -368,6 +406,7 @@ function bootNavScroll() {
       // в режиме «всегда закрываюсь».
       menuOpen = false;
       if (menuTl) menuTl.kill();
+      unlockScroll();
 
       // Если всё ещё в зоне инверсии — вернуть плашку в dark
       if (isInInvertZone()) applyInvertState(INVERT_DARK);

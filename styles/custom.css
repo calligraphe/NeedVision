@@ -17,6 +17,16 @@ body::-webkit-scrollbar {
 }
 
 
+/* 0.05 Фоллбек блокировки скролла для меню.
+   Основной путь — lenis.stop() (добавляет .lenis-stopped на html →
+   overflow:hidden по правилу ниже). Этот класс срабатывает только
+   если Lenis недоступен (window.lenis === undefined). Включается из
+   nav-scroll.js → lockScroll(). */
+body.is-scroll-locked {
+  overflow: hidden;
+}
+
+
 /* 0.1 Lenis smooth scroll — нативный body-скролл выключаем,
    Lenis сам управляет позицией. */
 html.lenis, html.lenis body {
