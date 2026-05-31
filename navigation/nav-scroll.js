@@ -2,9 +2,10 @@
  * Навигация: сжатие плашки на скролле + клик-меню.
  *
  * На скролле плашка .menu_overlay-content сжимается 57vw → 24vw, белеет,
- * показывается profit-счётчик, лого опускается. Над .stages цвета
- * инвертируются. По клику .nav-menu — экстренно дожимает плашку (если
- * юзер у верха) и раскрывает .menu_dropdown-list.
+ * получает радиус 0.8vw на верхних углах, показывается profit-счётчик,
+ * лого опускается. Над .stages цвета инвертируются. По клику .nav-menu —
+ * экстренно дожимает плашку (если юзер у верха) и раскрывает
+ * .menu_dropdown-list.
  *
  * На внутренних страницах (например /cases) навигация должна быть сразу
  * в «сжатом» виде без scroll-анимации. Для этого на <body> ставится
@@ -50,9 +51,13 @@ function bootNavScroll() {
   gsap.set(".menu_backdrop", { opacity: 0, pointerEvents: "none" });
 
   // У overlay в Webflow нет explicit bg — задаём прозрачно-белый,
-  // чтобы tween в #ffffff корректно интерполировал альфу
+  // чтобы tween в #ffffff корректно интерполировал альфу.
+  // Верхние углы стартуют с радиусом 0 — детерминированная точка
+  // отсчёта для tween к 0.8vw (не подхватывает случайный Webflow-овский радиус).
   gsap.set(".menu_overlay-content", {
-    backgroundColor: "rgba(255,255,255,0)"
+    backgroundColor: "rgba(255,255,255,0)",
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0
   });
 
 
@@ -66,6 +71,13 @@ function bootNavScroll() {
   // «приземлиться» до того, как плашка начнёт перекрашиваться.
   const compressTl = gsap.timeline({ paused: true });
   const TOP_DELAY = 0.09;
+
+  // Тюнинг радиуса и тайминга profit. Сумма PROFIT_POS + PROFIT_DUR
+  // должна равняться эффективной длительности compressTl (TOP_DELAY + 0.5 = 0.59),
+  // чтобы profit завершался ровно в момент полного сжатия плашки.
+  const OVERLAY_RADIUS = "0.8vw";
+  const PROFIT_POS = 0.29;
+  const PROFIT_DUR = 0.3;
 
   // Размер через scale (а не width) — composite, не триггерит reflow
   // и не пересобирает <img> srcset. transformOrigin left center чтобы
@@ -94,6 +106,15 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
+  // Радиус верхних углов плашки → 0.8vw синхронно с width/bg.
+  // Тот же TOP_DELAY и dur 0.5 → заканчивается в момент полного сжатия.
+  compressTl.to(".menu_overlay-content", {
+    borderTopLeftRadius: OVERLAY_RADIUS,
+    borderTopRightRadius: OVERLAY_RADIUS,
+    duration: 0.5,
+    ease: "power2.out"
+  }, TOP_DELAY);
+
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
     duration: 0.5,
@@ -106,6 +127,26 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
+  // Profit-badge и profit-items привязаны к самому концу compressTl —
+  // заканчиваются строго в момент полного сжатия плашки
+  // (PROFIT_POS + PROFIT_DUR = 0.59 = TOP_DELAY + 0.5).
+  // Короткая длительность (0.3) и позиция в конце дают резкое
+  // синхронное появление без размазывания на весь scroll-путь в scrub-режиме.
+  compressTl.to(".menu_profit-badge", {
+    width: "auto",
+    opacity: 1,
+    margin: "0 0.5vw",
+    duration: PROFIT_DUR,
+    ease: "power2.out"
+  }, PROFIT_POS);
+
+  compressTl.to(".nav-profit-item", {
+    opacity: 1,
+    y: 0,
+    duration: PROFIT_DUR,
+    ease: "power2.out"
+  }, PROFIT_POS);
+
   // Иконки/таймер исчезают/появляются отдельным autoplay-фейдом —
   // не привязаны к скроллу и без ресайза (только opacity). Триггер
   // ниже — ScrollTrigger.onEnter/onLeaveBack.
@@ -116,46 +157,6 @@ function bootNavScroll() {
   // mobile (≤991px) → autoplay compressTl при загрузке, без scrub.
   // desktop → scroll-driven scrub.
   const isStaticNav = document.body?.dataset?.navMode === "static";
-
-  // ---- Autoplay для profit-badge / profit-item ----
-  // Раньше эти два тween'а сидели внутри compressTl и плавно
-  // проявлялись по мере scrub-сжатия (выглядело размазано на
-  // протяжении 300vw скролла). Теперь — отдельный paused-таймлайн,
-  // который запускается когда compressTl уже почти дожат (>=90%
-  // progress). Возврат — когда progress падает ниже порога.
-  // Триггер привязан к compressTl, поэтому работает одинаково и
-  // на scroll-scrub (desktop), и на triggered play (mobile), и
-  // на forced-progress в openMenu/closeMenu.
-  const profitTl = gsap.timeline({ paused: true });
-  profitTl.to(".menu_profit-badge", {
-    width: "auto",
-    opacity: 1,
-    margin: "0 0.5vw",
-    duration: 0.6,
-    ease: "power2.out"
-  }, 0);
-  profitTl.to(".nav-profit-item", {
-    opacity: 1,
-    y: 0,
-    duration: 0.7,
-    stagger: 0.1,
-    ease: "power2.out"
-  }, 0.1);
-
-  const PROFIT_THRESHOLD = 0.9;
-  let profitShown = false;
-  compressTl.eventCallback("onUpdate", () => {
-    const p = compressTl.progress();
-    if (p >= PROFIT_THRESHOLD && !profitShown) {
-      profitShown = true;
-      profitTl.timeScale(1).play();
-    } else if (p < PROFIT_THRESHOLD && profitShown) {
-      profitShown = false;
-      // Reverse 2× быстрее — при резком скролле вверх юзер успевает
-      // увидеть как profit ушёл, не оставляет хвост поверх плашки.
-      profitTl.timeScale(2).reverse();
-    }
-  });
 
 
   // ---- Autoplay-фейд для иконок/таймера ----
@@ -193,7 +194,7 @@ function bootNavScroll() {
   } else if (isMobile) {
     // Mobile: триггер по скроллу, но НЕ scrub.
     //   юзер скроллит вниз (за 50px) → compressTl.play() — проигрывается
-    //     вперёд за свою длительность (~0.73с), плавно;
+    //     вперёд за свою длительность (~0.59с), плавно;
     //   юзер вернулся вверх → compressTl.reverse() — играет назад.
     // Это даёт ту же логику что desktop scrub, но без лагов: timeline
     // проигрывается за фикс. время, не дёргается под каждый touch-tick.
