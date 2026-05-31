@@ -279,38 +279,6 @@ function bootNavScroll() {
     return !!navInvertTl?.scrollTrigger && navInvertTl.scrollTrigger.progress > 0.5;
   }
 
-
-  // ---- Блокировка скролла при открытом меню ----
-  // Три слоя страховки, потому что Lenis перехватывает wheel/touch до
-  // нативного скролла и одного overflow:hidden недостаточно:
-  //   1) lenis.stop() — Lenis перестаёт двигать scrollTop сам.
-  //   2) Класс .is-scroll-locked на <html> — overflow:hidden !important
-  //      на html и body + touch-action:none (для мобилы).
-  //   3) preventDefault на wheel/touchmove в capture-фазе — последний
-  //      рубеж, перебивает любые сторонние listeners.
-  // Все три снимаются при unlockScroll в обратном порядке.
-  function blockScrollEvent(e) { e.preventDefault(); }
-  const scrollEventOpts = { passive: false, capture: true };
-
-  let scrollLocked = false;
-  function lockScroll() {
-    if (scrollLocked) return;
-    scrollLocked = true;
-    window.lenis?.stop?.();
-    document.documentElement.classList.add("is-scroll-locked");
-    window.addEventListener("wheel", blockScrollEvent, scrollEventOpts);
-    window.addEventListener("touchmove", blockScrollEvent, scrollEventOpts);
-  }
-  function unlockScroll() {
-    if (!scrollLocked) return;
-    scrollLocked = false;
-    window.removeEventListener("wheel", blockScrollEvent, scrollEventOpts);
-    window.removeEventListener("touchmove", blockScrollEvent, scrollEventOpts);
-    document.documentElement.classList.remove("is-scroll-locked");
-    window.lenis?.start?.();
-  }
-
-
   // ---- Меню (открытие/закрытие) ----
   const menuBtn = document.querySelector(".nav-menu");
   const menuPanel = document.querySelector(".menu_dropdown-list");
@@ -326,7 +294,6 @@ function bootNavScroll() {
     function openMenu() {
       menuOpen = true;
       if (menuTl) menuTl.kill();
-      lockScroll();
 
       // Если меню открывают над .stages — перебиваем navInvertTl на light
       if (isInInvertZone()) applyInvertState(INVERT_LIGHT);
@@ -401,7 +368,6 @@ function bootNavScroll() {
       // в режиме «всегда закрываюсь».
       menuOpen = false;
       if (menuTl) menuTl.kill();
-      unlockScroll();
 
       // Если всё ещё в зоне инверсии — вернуть плашку в dark
       if (isInInvertZone()) applyInvertState(INVERT_DARK);
