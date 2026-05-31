@@ -1,13 +1,19 @@
 /* Кастомные стили под скрипты. */
 
 
-/* 0. Резервируем место под scrollbar навсегда.
-   Без этого: preloader/модалки ставят overflow:hidden → scrollbar
-   исчезает → viewport расширяется на ~15px → весь контент дёргается.
-   scrollbar-gutter:stable держит ширину content-area постоянной
-   независимо от того виден scrollbar или нет. */
-html {
-  scrollbar-gutter: stable;
+/* 0. Скрываем scrollbar сайта полностью.
+   Скролл работает, бар не отображается. Поскольку бара нет совсем,
+   viewport не «прыгает» при overflow:hidden от preloader/модалок —
+   scrollbar-gutter тут уже не нужен. */
+html, body {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE 10+, старый Edge */
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;               /* Chrome, Safari, новый Edge */
 }
 
 
