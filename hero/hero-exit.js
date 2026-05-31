@@ -77,21 +77,26 @@ document.addEventListener("DOMContentLoaded", () => {
     ease: "power3.inOut"
   });
 
-  // Точечный триггер на 300vh — зона 1px.
-  //   - юзер пересекает 300vh вниз → onEnter → play (текст уезжает)
-  //   - юзер уходит выше 300vh → onLeaveBack → reverse (текст возвращается)
+  // Широкая зона 300vh → 500vh. Узкая 1px зона пропускалась на
+  // быстром скролле через Lenis — onLeaveBack стрелял с задержкой.
+  // Теперь триггер «активен» на всём пути ниже 300vh, и onLeaveBack
+  // срабатывает мгновенно как только юзер пересекает 300vh вверх.
+  //   - 300vh ↓ → onEnter → play (текст уезжает)
+  //   - 300vh ↑ → onLeaveBack → reverse (текст возвращается)
   ScrollTrigger.create({
     trigger: "body",
     start: () => "top top-=" + (window.innerHeight * 3.0),
-    end: "+=1",
+    end: () => "top top-=" + (window.innerHeight * 5.0),
     invalidateOnRefresh: true,
     onEnter: () => {
       console.log("[hero-exit] onEnter → play");
-      tl.play();
+      tl.timeScale(1).play();
     },
     onLeaveBack: () => {
       console.log("[hero-exit] onLeaveBack → reverse");
-      tl.reverse();
+      // Reverse 1.5× быстрее — текст возвращается резво, не оставляет
+      // ощущение «приходится скроллить обратно долго».
+      tl.timeScale(1.5).reverse();
     }
   });
 });
