@@ -281,28 +281,33 @@ function bootNavScroll() {
 
 
   // ---- Блокировка скролла при открытом меню ----
-  // Главный механизм — класс .is-scroll-locked на <html>:
-  // CSS-правило в custom.css ставит overflow:hidden, нативный скролл
-  // и колесо встают мгновенно. Класс на html (не body), потому что у
-  // нас основной скролл-контейнер — window/html.
-  //
-  // lenis.stop() — дополнительный вызов, чтобы инерция Lenis-tween'а
-  // не доезжала после блока. На прошлой попытке мы полагались только
-  // на Lenis (через document.documentElement.style.overflow), и сайт
-  // переставал скроллиться после первого open/close — теперь Lenis
-  // только останавливает свой tween, а overflow контролирует CSS-класс.
+  // Три слоя страховки, потому что Lenis перехватывает wheel/touch до
+  // нативного скролла и одного overflow:hidden недостаточно:
+  //   1) lenis.stop() — Lenis перестаёт двигать scrollTop сам.
+  //   2) Класс .is-scroll-locked на <html> — overflow:hidden !important
+  //      на html и body + touch-action:none (для мобилы).
+  //   3) preventDefault на wheel/touchmove в capture-фазе — последний
+  //      рубеж, перебивает любые сторонние listeners.
+  // Все три снимаются при unlockScroll в обратном порядке.
+  function blockScrollEvent(e) { e.preventDefault(); }
+  const scrollEventOpts = { passive: false, capture: true };
+
   let scrollLocked = false;
   function lockScroll() {
     if (scrollLocked) return;
     scrollLocked = true;
-    document.documentElement.classList.add("is-scroll-locked");
     window.lenis?.stop?.();
+    document.documentElement.classList.add("is-scroll-locked");
+    window.addEventListener("wheel", blockScrollEvent, scrollEventOpts);
+    window.addEventListener("touchmove", blockScrollEvent, scrollEventOpts);
   }
   function unlockScroll() {
     if (!scrollLocked) return;
     scrollLocked = false;
-    window.lenis?.start?.();
+    window.removeEventListener("wheel", blockScrollEvent, scrollEventOpts);
+    window.removeEventListener("touchmove", blockScrollEvent, scrollEventOpts);
     document.documentElement.classList.remove("is-scroll-locked");
+    window.lenis?.start?.();
   }
 
 

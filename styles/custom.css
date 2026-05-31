@@ -18,14 +18,16 @@ body::-webkit-scrollbar {
 
 
 /* 0.05 Блокировка скролла когда открыто меню.
-   Включается из nav-scroll.js → lockScroll() через добавление класса
-   на <html> (не body — основной скролл-контейнер у нас html/window,
-   overflow:hidden на body не блокирует window scroll).
-   Параллельно вызывается lenis.stop() для останова инерционного tween,
-   но overflow:hidden от этого класса — главный гарант остановки,
-   даже если window.lenis недоступен (внешний инстанс или нет Lenis вообще). */
-html.is-scroll-locked {
-  overflow: hidden;
+   Класс ставится на <html> из nav-scroll.js → lockScroll().
+   !important нужен потому что Lenis/Webflow могут навешать
+   свои overflow-правила с равной специфичностью.
+   Класс висит на html и одновременно охватывает body — оба контейнера
+   стопаются, какой бы из них ни был root-scrolling-element. */
+html.is-scroll-locked,
+html.is-scroll-locked body {
+  overflow: hidden !important;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 
