@@ -77,24 +77,20 @@ document.addEventListener("DOMContentLoaded", () => {
     ease: "power3.inOut"
   });
 
-  // Hysteresis-зона 290vh → 300vh:
-  //   - юзер скроллит вниз и пересекает 300vh → onLeave → play
-  //     (текст уезжает)
-  //   - юзер скроллит обратно вверх и пересекает 290vh → onLeaveBack
-  //     → reverse (текст возвращается, недалеко от точки исчезновения)
-  // Буфер 10vh между точками срабатывания защищает от микроколебаний
-  // на границе — без него лёгкое дрожание скролла дёргало бы анимацию.
+  // Точечный триггер на 300vh — зона 1px.
+  //   - юзер пересекает 300vh вниз → onEnter → play (текст уезжает)
+  //   - юзер уходит выше 300vh → onLeaveBack → reverse (текст возвращается)
   ScrollTrigger.create({
     trigger: "body",
-    start: () => "top top-=" + (window.innerHeight * 2.9),
-    end: () => "top top-=" + (window.innerHeight * 3.0),
+    start: () => "top top-=" + (window.innerHeight * 3.0),
+    end: "+=1",
     invalidateOnRefresh: true,
-    onLeave: () => {
-      console.log("[hero-exit] onLeave (300vh ↓) → play");
+    onEnter: () => {
+      console.log("[hero-exit] onEnter → play");
       tl.play();
     },
     onLeaveBack: () => {
-      console.log("[hero-exit] onLeaveBack (290vh ↑) → reverse");
+      console.log("[hero-exit] onLeaveBack → reverse");
       tl.reverse();
     }
   });
