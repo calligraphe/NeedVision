@@ -4,7 +4,9 @@
  * На скролле плашка .menu_overlay-content сжимается 57vw → 24vw, белеет,
  * показывается profit-счётчик, лого опускается. Над .stages цвета
  * инвертируются. По клику .nav-menu — экстренно дожимает плашку (если
- * юзер у верха) и раскрывает .menu_dropdown-list.
+ * юзер у верха), верхние углы плашки уезжают с 1.5vw до 0.8vw и
+ * раскрывается .menu_dropdown-list. При закрытии — верхние углы
+ * возвращаются к 1.5vw.
  *
  * На внутренних страницах (например /cases) навигация должна быть сразу
  * в «сжатом» виде без scroll-анимации. Для этого на <body> ставится
@@ -67,9 +69,15 @@ function bootNavScroll() {
   const compressTl = gsap.timeline({ paused: true });
   const TOP_DELAY = 0.09;
 
+  // OVERLAY_RADIUS_OPEN/CLOSED — верхние углы плашки при открытом и
+  // закрытом меню. Закрытое значение (1.5vw) совпадает с радиусом,
+  // выставленным в Webflow CSS, — при закрытии плашка визуально
+  // возвращается в исходный вид.
   // PROFIT_POS + PROFIT_DUR должна равняться эффективной длительности
   // compressTl (TOP_DELAY + 0.5 = 0.59), чтобы profit завершался ровно
   // в момент полного сжатия плашки.
+  const OVERLAY_RADIUS_OPEN = "0.8vw";
+  const OVERLAY_RADIUS_CLOSED = "1.5vw";
   const PROFIT_POS = 0.29;
   const PROFIT_DUR = 0.3;
 
@@ -316,6 +324,15 @@ function bootNavScroll() {
         ease: "power2.out"
       }, dropdownPos);
 
+      // Верхние углы плашки: 1.5vw → 0.8vw синхронно с раскрытием
+      // дропдауна. "<" — старт одновременно с предыдущим твином.
+      menuTl.to(".menu_overlay-content", {
+        borderTopLeftRadius: OVERLAY_RADIUS_OPEN,
+        borderTopRightRadius: OVERLAY_RADIUS_OPEN,
+        duration: 0.6,
+        ease: "power2.out"
+      }, "<");
+
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 1,
@@ -361,6 +378,14 @@ function bootNavScroll() {
         height: 0,
         opacity: 0,
         duration: 0.75,
+        ease: "power2.in"
+      }, 0);
+
+      // Верхние углы возвращаются к 1.5vw синхронно со схлопыванием.
+      menuTl.to(".menu_overlay-content", {
+        borderTopLeftRadius: OVERLAY_RADIUS_CLOSED,
+        borderTopRightRadius: OVERLAY_RADIUS_CLOSED,
+        duration: 0.5,
         ease: "power2.in"
       }, 0);
 
