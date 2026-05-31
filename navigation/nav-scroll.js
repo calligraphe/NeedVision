@@ -4,8 +4,7 @@
  * На скролле плашка .menu_overlay-content сжимается 57vw → 24vw, белеет,
  * показывается profit-счётчик, лого опускается. Над .stages цвета
  * инвертируются. По клику .nav-menu — экстренно дожимает плашку (если
- * юзер у верха), скругляет верхние углы плашки до 0.8vw и раскрывает
- * .menu_dropdown-list. При закрытии — углы возвращаются в 0.
+ * юзер у верха) и раскрывает .menu_dropdown-list.
  *
  * На внутренних страницах (например /cases) навигация должна быть сразу
  * в «сжатом» виде без scroll-анимации. Для этого на <body> ставится
@@ -52,13 +51,8 @@ function bootNavScroll() {
 
   // У overlay в Webflow нет explicit bg — задаём прозрачно-белый,
   // чтобы tween в #ffffff корректно интерполировал альфу.
-  // Верхние углы стартуют с радиусом 0 — детерминированная точка
-  // отсчёта для tween к 0.8vw при открытии меню (не подхватывает
-  // случайный Webflow-овский радиус).
   gsap.set(".menu_overlay-content", {
-    backgroundColor: "rgba(255,255,255,0)",
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0
+    backgroundColor: "rgba(255,255,255,0)"
   });
 
 
@@ -73,12 +67,9 @@ function bootNavScroll() {
   const compressTl = gsap.timeline({ paused: true });
   const TOP_DELAY = 0.09;
 
-  // OVERLAY_RADIUS — радиус верхних углов плашки при открытом меню
-  // (применяется в openMenu/closeMenu, не на скролле).
   // PROFIT_POS + PROFIT_DUR должна равняться эффективной длительности
   // compressTl (TOP_DELAY + 0.5 = 0.59), чтобы profit завершался ровно
   // в момент полного сжатия плашки.
-  const OVERLAY_RADIUS = "0.8vw";
   const PROFIT_POS = 0.29;
   const PROFIT_DUR = 0.3;
 
@@ -325,15 +316,6 @@ function bootNavScroll() {
         ease: "power2.out"
       }, dropdownPos);
 
-      // Скругление верхних углов плашки → 0.8vw синхронно с раскрытием
-      // дропдауна. "<" — старт одновременно с предыдущим твином.
-      menuTl.to(".menu_overlay-content", {
-        borderTopLeftRadius: OVERLAY_RADIUS,
-        borderTopRightRadius: OVERLAY_RADIUS,
-        duration: 0.6,
-        ease: "power2.out"
-      }, "<");
-
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 1,
@@ -379,14 +361,6 @@ function bootNavScroll() {
         height: 0,
         opacity: 0,
         duration: 0.75,
-        ease: "power2.in"
-      }, 0);
-
-      // Радиус возвращается в 0 синхронно со схлопыванием дропдауна.
-      menuTl.to(".menu_overlay-content", {
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        duration: 0.5,
         ease: "power2.in"
       }, 0);
 
