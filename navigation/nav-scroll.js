@@ -2,10 +2,10 @@
  * Навигация: сжатие плашки на скролле + клик-меню.
  *
  * На скролле плашка .menu_overlay-content сжимается 57vw → 24vw, белеет,
- * получает радиус 0.8vw на верхних углах, показывается profit-счётчик,
- * лого опускается. Над .stages цвета инвертируются. По клику .nav-menu —
- * экстренно дожимает плашку (если юзер у верха) и раскрывает
- * .menu_dropdown-list.
+ * показывается profit-счётчик, лого опускается. Над .stages цвета
+ * инвертируются. По клику .nav-menu — экстренно дожимает плашку (если
+ * юзер у верха), скругляет верхние углы плашки до 0.8vw и раскрывает
+ * .menu_dropdown-list. При закрытии — углы возвращаются в 0.
  *
  * На внутренних страницах (например /cases) навигация должна быть сразу
  * в «сжатом» виде без scroll-анимации. Для этого на <body> ставится
@@ -53,7 +53,8 @@ function bootNavScroll() {
   // У overlay в Webflow нет explicit bg — задаём прозрачно-белый,
   // чтобы tween в #ffffff корректно интерполировал альфу.
   // Верхние углы стартуют с радиусом 0 — детерминированная точка
-  // отсчёта для tween к 0.8vw (не подхватывает случайный Webflow-овский радиус).
+  // отсчёта для tween к 0.8vw при открытии меню (не подхватывает
+  // случайный Webflow-овский радиус).
   gsap.set(".menu_overlay-content", {
     backgroundColor: "rgba(255,255,255,0)",
     borderTopLeftRadius: 0,
@@ -72,9 +73,11 @@ function bootNavScroll() {
   const compressTl = gsap.timeline({ paused: true });
   const TOP_DELAY = 0.09;
 
-  // Тюнинг радиуса и тайминга profit. Сумма PROFIT_POS + PROFIT_DUR
-  // должна равняться эффективной длительности compressTl (TOP_DELAY + 0.5 = 0.59),
-  // чтобы profit завершался ровно в момент полного сжатия плашки.
+  // OVERLAY_RADIUS — радиус верхних углов плашки при открытом меню
+  // (применяется в openMenu/closeMenu, не на скролле).
+  // PROFIT_POS + PROFIT_DUR должна равняться эффективной длительности
+  // compressTl (TOP_DELAY + 0.5 = 0.59), чтобы profit завершался ровно
+  // в момент полного сжатия плашки.
   const OVERLAY_RADIUS = "0.8vw";
   const PROFIT_POS = 0.29;
   const PROFIT_DUR = 0.3;
@@ -106,15 +109,6 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
-  // Радиус верхних углов плашки → 0.8vw синхронно с width/bg.
-  // Тот же TOP_DELAY и dur 0.5 → заканчивается в момент полного сжатия.
-  compressTl.to(".menu_overlay-content", {
-    borderTopLeftRadius: OVERLAY_RADIUS,
-    borderTopRightRadius: OVERLAY_RADIUS,
-    duration: 0.5,
-    ease: "power2.out"
-  }, TOP_DELAY);
-
   compressTl.to(".menu_control-bar *", {
     color: "#000000",
     duration: 0.5,
@@ -127,11 +121,12 @@ function bootNavScroll() {
     ease: "power2.out"
   }, TOP_DELAY);
 
-  // Profit-badge и profit-items привязаны к самому концу compressTl —
-  // заканчиваются строго в момент полного сжатия плашки
-  // (PROFIT_POS + PROFIT_DUR = 0.59 = TOP_DELAY + 0.5).
-  // Короткая длительность (0.3) и позиция в конце дают резкое
-  // синхронное появление без размазывания на весь scroll-путь в scrub-режиме.
+  // Profit-badge привязан к концу compressTl — заканчивается строго в
+  // момент полного сжатия плашки (PROFIT_POS + PROFIT_DUR = 0.59 = TOP_DELAY + 0.5).
+  // Сама анимация появления (width auto + opacity + margin / opacity + y + stagger)
+  // оставлена как в оригинале — изменена только скорость, чтобы успеть
+  // закончиться синхронно со сжатием. Раньше длительности были 0.6 и 0.7
+  // с stagger 0.1 — заведомо длиннее окна компрессии.
   compressTl.to(".menu_profit-badge", {
     width: "auto",
     opacity: 1,
@@ -140,10 +135,17 @@ function bootNavScroll() {
     ease: "power2.out"
   }, PROFIT_POS);
 
+  // items: dur 0.2 + stagger 0.05 даёт оригинальный каскадный эффект,
+  // но укладывается в финальный отрезок compressTl. Для ≤3 items
+  // последний закончится не позже 0.59. Для большего количества — чуть
+  // вылезет, регулируется через PROFIT_ITEM_STAGGER.
+  const PROFIT_ITEM_DUR = 0.2;
+  const PROFIT_ITEM_STAGGER = 0.05;
   compressTl.to(".nav-profit-item", {
     opacity: 1,
     y: 0,
-    duration: PROFIT_DUR,
+    duration: PROFIT_ITEM_DUR,
+    stagger: PROFIT_ITEM_STAGGER,
     ease: "power2.out"
   }, PROFIT_POS);
 
@@ -323,6 +325,15 @@ function bootNavScroll() {
         ease: "power2.out"
       }, dropdownPos);
 
+      // Скругление верхних углов плашки → 0.8vw синхронно с раскрытием
+      // дропдауна. "<" — старт одновременно с предыдущим твином.
+      menuTl.to(".menu_overlay-content", {
+        borderTopLeftRadius: OVERLAY_RADIUS,
+        borderTopRightRadius: OVERLAY_RADIUS,
+        duration: 0.6,
+        ease: "power2.out"
+      }, "<");
+
       if (menuBackdrop) {
         menuTl.to(menuBackdrop, {
           opacity: 1,
@@ -368,6 +379,14 @@ function bootNavScroll() {
         height: 0,
         opacity: 0,
         duration: 0.75,
+        ease: "power2.in"
+      }, 0);
+
+      // Радиус возвращается в 0 синхронно со схлопыванием дропдауна.
+      menuTl.to(".menu_overlay-content", {
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        duration: 0.5,
         ease: "power2.in"
       }, 0);
 
