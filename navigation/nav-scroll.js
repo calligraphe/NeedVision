@@ -88,7 +88,7 @@ function bootNavScroll() {
   compressTl.to(".nav-logo_img", {
     scale: 0.47,
     y: "2vw",
-    marginLeft: "1vw",
+    marginLeft: "0.6vw",
     duration: 0.25,
     ease: "power2.out"
   }, 0);
